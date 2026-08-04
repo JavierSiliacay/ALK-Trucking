@@ -175,7 +175,7 @@ export default function DashboardPage() {
       <TripFormModal
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
-        onSave={(data) => addTrip(data as any)}
+        onSave={async (data) => { await addTrip(data as any); }}
       />
     </div>
   );

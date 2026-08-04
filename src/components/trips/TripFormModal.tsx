@@ -8,7 +8,7 @@ import { CurrencyInput } from "@/components/ui/CurrencyInput";
 interface TripFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (tripData: Omit<Trip, "id" | "createdAt" | "status"> | Trip) => void;
+  onSave: (tripData: Omit<Trip, "id" | "createdAt" | "status"> | Trip) => void | Promise<void>;
   initialTrip?: Trip | null;
 }
 
@@ -38,6 +38,7 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
 
   const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
   const [lastDeletedExpense, setLastDeletedExpense] = useState<{ expense: ExpenseItem; index: number } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setLastDeletedExpense(null);
@@ -61,33 +62,26 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
       setExpenses(initialTrip.expenses || []);
     } else {
       const today = new Date().toISOString().split("T")[0];
-      const defaultRows: ExpenseItem[] = [
-        { id: "e1", category: "Fuel", dateRequest: today, rsNo: "", description: "Diesel Fuel", amount: 6000, remarks: "" },
-        { id: "e2", category: "Toll Fee", dateRequest: today, rsNo: "", description: "Highway Tolls", amount: 1000, remarks: "" },
-        { id: "e3", category: "Driver Allowance", dateRequest: today, rsNo: "", description: "Food & Allowance", amount: 2000, remarks: "" },
-        { id: "e4", category: "Helper Allowance", dateRequest: today, rsNo: "", description: "Helper Fee", amount: 1000, remarks: "" },
-      ];
-
-      setSeqNo(`JLY-${Math.floor(100 + Math.random() * 900)}-26`);
+      
+      setSeqNo("");
       setDateOfTravel(today);
-      setCustomerName(masterData.customers[0] || "WEST-O");
-      setOwner(masterData.owners[0] || "ALK Trucking");
+      setCustomerName("");
+      setOwner("ALK Trucking");
 
-      const defaultTruck = masterData.trucks[0] || { unit: "CANTER", plateNo: "AAX-4163" };
-      setUnit(defaultTruck.unit);
-      setPlateNo(defaultTruck.plateNo);
+      setUnit("");
+      setPlateNo("");
 
-      setDriver(masterData.drivers[0] || "ARA, R.");
-      setHelper1(masterData.helpers[0] || "Gomez, B.");
+      setDriver("");
+      setHelper1("");
       setHelper2("");
-      setOrigin("CDO");
-      setDestination("SURIGAO");
-      setDistance("310 km");
-      setGatePassNo("015975");
+      setOrigin("");
+      setDestination("");
+      setDistance("");
+      setGatePassNo("");
       setGatePassDate(today);
-      setRate(20000);
+      setRate("");
       setNotes("");
-      setExpenses(defaultRows);
+      setExpenses([]);
     }
   }, [initialTrip, isOpen, masterData]);
 
@@ -114,7 +108,7 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
   const handleAddExpenseRow = () => {
     const newRow: ExpenseItem = {
       id: `exp_${Date.now()}`,
-      category: "Miscellaneous",
+      category: EXPENSE_CATEGORIES[0],
       dateRequest: new Date().toISOString().split("T")[0],
       rsNo: "",
       description: "",
@@ -141,31 +135,38 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
     setLastDeletedExpense(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = {
-      ...(initialTrip ? { ...initialTrip } : {}),
-      seqNo: seqNo || `TRP-${Date.now()}`,
-      dateOfTravel,
-      customerName,
-      owner: owner || "ALK Trucking",
-      unit,
-      plateNo,
-      driver,
-      helper1,
-      helper2,
-      origin,
-      destination,
-      distance,
-      gatePassNo,
-      gatePassDate,
-      rate: Number(rate) || 0,
-      expenses,
-      notes,
-    };
+    setIsSaving(true);
+    try {
+      const payload = {
+        ...(initialTrip ? { ...initialTrip } : {}),
+        seqNo: seqNo || `TRP-${Date.now()}`,
+        dateOfTravel,
+        customerName,
+        owner: owner || "ALK Trucking",
+        unit,
+        plateNo,
+        driver,
+        helper1,
+        helper2,
+        origin,
+        destination,
+        distance,
+        gatePassNo,
+        gatePassDate,
+        rate: Number(rate) || 0,
+        expenses,
+        notes,
+      };
 
-    onSave(payload as any);
-    onClose();
+      await onSave(payload as any);
+      onClose();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -255,15 +256,11 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
                 <input
                   type="text"
                   required
-                  list="customer-list"
                   placeholder="e.g. WEST-O"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
-                <datalist id="customer-list">
-                  {masterData.customers.map((c) => <option key={c} value={c} />)}
-                </datalist>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -307,6 +304,7 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
                     onChange={(e) => handleTruckSelect(e.target.value)}
                     className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-sm font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
                   >
+                    <option value="" disabled>Select Truck...</option>
                     {masterData.trucks.map((t) => (
                       <option key={t.unit} value={t.unit}>
                         {t.unit} ({t.plateNo})
@@ -413,17 +411,39 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
               {expenses.map((exp, index) => (
                 <div key={exp.id || index} className="flex gap-2 items-center group">
                   
-                  {/* Category Dropdown */}
-                  <div className="w-[160px] shrink-0">
-                    <select
-                      value={exp.category}
-                      onChange={(e) => handleExpenseChange(index, "category", e.target.value)}
-                      className="w-full h-9 px-2.5 bg-white border border-gray-300 rounded text-xs font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                    >
-                      {EXPENSE_CATEGORIES.map((cat) => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                    </select>
+                  {/* Category Dropdown or Input */}
+                  <div className="w-[160px] shrink-0 relative flex items-center">
+                    {EXPENSE_CATEGORIES.includes(exp.category) ? (
+                      <select
+                        value={exp.category}
+                        onChange={(e) => handleExpenseChange(index, "category", e.target.value)}
+                        className="w-full h-9 px-2.5 bg-white border border-gray-300 rounded text-xs font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                      >
+                        {EXPENSE_CATEGORIES.map((cat) => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                        <option value="Custom">Custom...</option>
+                      </select>
+                    ) : (
+                      <div className="relative w-full">
+                        <input
+                          type="text"
+                          autoFocus
+                          placeholder="Type custom category..."
+                          value={exp.category === "Custom" ? "" : exp.category}
+                          onChange={(e) => handleExpenseChange(index, "category", e.target.value)}
+                          className="w-full h-9 px-2.5 pr-6 bg-white border border-gray-300 rounded text-xs font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleExpenseChange(index, "category", EXPENSE_CATEGORIES[0])}
+                          className="absolute right-1 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 w-5 h-5 flex items-center justify-center font-bold text-sm"
+                          title="Back to list"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Description Input */}
@@ -496,10 +516,11 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
             </button>
             <button
               type="submit"
-              className="px-5 py-2 bg-[#00193c] hover:bg-blue-900 text-white rounded font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+              disabled={isSaving}
+              className="px-5 py-2 bg-[#00193c] hover:bg-blue-900 text-white rounded font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              <Check className="w-4 h-4" />
-              <span>{initialTrip ? "Update Record" : "Save Trip Record"}</span>
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              <span>{isSaving ? "Saving..." : (initialTrip ? "Update Record" : "Save Trip Record")}</span>
             </button>
           </div>
 

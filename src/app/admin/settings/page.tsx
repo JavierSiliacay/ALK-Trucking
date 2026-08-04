@@ -137,9 +137,8 @@ export default function SettingsPage() {
       <div className="flex flex-wrap items-center gap-2 bg-slate-100 p-1.5 rounded-2xl mb-8">
         <button
           onClick={() => setActiveTab("drivers")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all cursor-pointer ${
-            activeTab === "drivers" ? "bg-[#1e3a8a] text-white shadow-md" : "text-slate-600 hover:bg-slate-200"
-          }`}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all cursor-pointer ${activeTab === "drivers" ? "bg-[#1e3a8a] text-white shadow-md" : "text-slate-600 hover:bg-slate-200"
+            }`}
         >
           <UserCheck className="w-4 h-4" />
           <span>Drivers ({masterData.drivers.length})</span>
@@ -147,9 +146,8 @@ export default function SettingsPage() {
 
         <button
           onClick={() => setActiveTab("helpers")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all cursor-pointer ${
-            activeTab === "helpers" ? "bg-[#1e3a8a] text-white shadow-md" : "text-slate-600 hover:bg-slate-200"
-          }`}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all cursor-pointer ${activeTab === "helpers" ? "bg-[#1e3a8a] text-white shadow-md" : "text-slate-600 hover:bg-slate-200"
+            }`}
         >
           <Users className="w-4 h-4" />
           <span>Helpers ({masterData.helpers.length})</span>
@@ -157,9 +155,8 @@ export default function SettingsPage() {
 
         <button
           onClick={() => setActiveTab("trucks")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all cursor-pointer ${
-            activeTab === "trucks" ? "bg-[#1e3a8a] text-white shadow-md" : "text-slate-600 hover:bg-slate-200"
-          }`}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all cursor-pointer ${activeTab === "trucks" ? "bg-[#1e3a8a] text-white shadow-md" : "text-slate-600 hover:bg-slate-200"
+            }`}
         >
           <Truck className="w-4 h-4" />
           <span>Trucks ({masterData.trucks.length})</span>
@@ -167,9 +164,8 @@ export default function SettingsPage() {
 
         <button
           onClick={() => setActiveTab("customers")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all cursor-pointer ${
-            activeTab === "customers" ? "bg-[#1e3a8a] text-white shadow-md" : "text-slate-600 hover:bg-slate-200"
-          }`}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all cursor-pointer ${activeTab === "customers" ? "bg-[#1e3a8a] text-white shadow-md" : "text-slate-600 hover:bg-slate-200"
+            }`}
         >
           <Building2 className="w-4 h-4" />
           <span>Customers ({masterData.customers.length})</span>
@@ -177,9 +173,8 @@ export default function SettingsPage() {
 
         <button
           onClick={() => setActiveTab("owners")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all cursor-pointer ${
-            activeTab === "owners" ? "bg-[#1e3a8a] text-white shadow-md" : "text-slate-600 hover:bg-slate-200"
-          }`}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all cursor-pointer ${activeTab === "owners" ? "bg-[#1e3a8a] text-white shadow-md" : "text-slate-600 hover:bg-slate-200"
+            }`}
         >
           <Shield className="w-4 h-4" />
           <span>Truck Owners ({masterData.owners.length})</span>
@@ -187,9 +182,8 @@ export default function SettingsPage() {
 
         <button
           onClick={() => setActiveTab("routes")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all cursor-pointer ${
-            activeTab === "routes" ? "bg-[#1e3a8a] text-white shadow-md" : "text-slate-600 hover:bg-slate-200"
-          }`}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all cursor-pointer ${activeTab === "routes" ? "bg-[#1e3a8a] text-white shadow-md" : "text-slate-600 hover:bg-slate-200"
+            }`}
         >
           <MapPin className="w-4 h-4" />
           <span>Routes ({masterData.routes.length})</span>
@@ -197,9 +191,8 @@ export default function SettingsPage() {
 
         <button
           onClick={() => setActiveTab("categories")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all cursor-pointer ${
-            activeTab === "categories" ? "bg-[#1e3a8a] text-white shadow-md" : "text-slate-600 hover:bg-slate-200"
-          }`}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all cursor-pointer ${activeTab === "categories" ? "bg-[#1e3a8a] text-white shadow-md" : "text-slate-600 hover:bg-slate-200"
+            }`}
         >
           <DollarSign className="w-4 h-4" />
           <span>Expense Categories ({masterData.expenseCategories.length})</span>

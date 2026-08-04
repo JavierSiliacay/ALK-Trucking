@@ -67,7 +67,7 @@ export default function Sidebar() {
           {!isCollapsed && (
             <div className="overflow-hidden">
               <h1 className="font-extrabold text-white text-sm leading-tight">Fleet Manager</h1>
-              <p className="text-[10px] text-blue-300/80 font-medium">ALK Trucking PH</p>
+              <p className="text-[10px] text-blue-300/80 font-medium">ALK Trucking Services</p>
             </div>
           )}
         </div>

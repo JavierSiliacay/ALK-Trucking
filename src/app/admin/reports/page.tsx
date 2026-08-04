@@ -31,7 +31,7 @@ export default function ReportsPage() {
   const { completedTrips, activeTrips, trips, isLoaded } = useTrips();
   const [filterPeriod, setFilterPeriod] = useState<ReportPeriod>("monthly");
   const [viewMode, setViewMode] = useState<ViewMode>("detailed");
-  
+
   // Clean Date Selector States
   const [selectedDay, setSelectedDay] = useState<string>(new Date().toISOString().split("T")[0]);
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
@@ -352,7 +352,7 @@ export default function ReportsPage() {
 
   return (
     <div className="p-4 sm:p-6 max-w-[1440px] mx-auto w-full space-y-6 bg-white">
-      
+
       {/* Ink-Saving Print PDF Media Styles (Pure White Bond Paper & No Heavy Dark Banners) */}
       <style jsx global>{`
         @media print {
@@ -435,10 +435,13 @@ export default function ReportsPage() {
       </div>
 
       {/* DEDICATED TABLE CONTROL TOOLBAR (HIGH-VISIBILITY SEARCH, FILTERS & TABS) */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 bg-slate-50 p-3 rounded-2xl border border-slate-200 shadow-2xs no-print">
-        
-        {/* Prominent High-Visibility Search Bar (Primary Staff Focal Point) */}
-        <div className="relative w-full lg:w-[400px] shrink-0">
+      <div className="flex flex-col gap-3.5 bg-slate-50 p-3 rounded-2xl border border-slate-200 shadow-2xs no-print">
+
+        {/* Top Row */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 w-full">
+
+          {/* Prominent High-Visibility Search Bar (Primary Staff Focal Point) */}
+          <div className="relative w-full lg:w-[500px] shrink-0">
           <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">
             search
           </span>
@@ -460,11 +463,11 @@ export default function ReportsPage() {
           )}
         </div>
 
-        {/* Filters and Tabs */}
-        <div className="flex flex-wrap items-center gap-2.5 justify-end w-full lg:w-auto">
+        {/* Top Right Controls (Financials Toggle + View Mode Switcher) */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto justify-end">
           
           {/* Show Financials Toggle */}
-          <label className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-300 shadow-2xs cursor-pointer hover:bg-slate-50 transition-colors">
+          <label className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-300 shadow-2xs cursor-pointer hover:bg-slate-50 transition-colors shrink-0">
             <input
               type="checkbox"
               checked={showFinancials}
@@ -473,6 +476,34 @@ export default function ReportsPage() {
             />
             <span className="text-xs font-bold text-[#00193c]">Show Revenue & Profit</span>
           </label>
+
+          {/* View Mode Switcher */}
+          <div className="flex bg-[#e5e8eb] p-1 rounded-xl shrink-0 w-full sm:w-auto justify-center">
+            <button
+            onClick={() => setViewMode("detailed")}
+            className={`px-5 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${viewMode === "detailed"
+                ? "bg-white text-[#00193c] shadow-xs"
+                : "text-[#43474f] hover:text-[#00193c]"
+              }`}
+          >
+            Detailed Log
+          </button>
+          <button
+            onClick={() => setViewMode("summary")}
+            className={`px-5 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${viewMode === "summary"
+                ? "bg-white text-[#00193c] shadow-xs"
+                : "text-[#43474f] hover:text-[#00193c]"
+              }`}
+          >
+            Overhead Summary
+          </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Row: Filters */}
+      <div className="flex flex-wrap items-center gap-2.5 w-full bg-slate-200/50 p-2.5 rounded-xl border border-slate-200">
+        <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider ml-1 mr-2 hidden sm:block">Filters</span>
 
           {/* Trip Status Filter */}
           <div className="flex items-center gap-1.5 bg-white px-2 py-1.5 rounded-xl border border-slate-300 shadow-2xs">
@@ -491,7 +522,7 @@ export default function ReportsPage() {
           {/* Unified Compact Date Filter Control (1-to-1 Match with User Image) */}
           <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-300 shadow-2xs">
             <span className="material-symbols-outlined text-slate-500 text-[18px]">calendar_today</span>
-            
+
             <select
               value={filterPeriod}
               onChange={(e) => setFilterPeriod(e.target.value as ReportPeriod)}
@@ -573,29 +604,7 @@ export default function ReportsPage() {
             )}
           </div>
 
-          {/* View Mode Switcher */}
-          <div className="flex bg-[#e5e8eb] p-1 rounded-xl shrink-0">
-            <button
-              onClick={() => setViewMode("detailed")}
-              className={`px-5 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
-                viewMode === "detailed"
-                  ? "bg-white text-[#00193c] shadow-xs"
-                  : "text-[#43474f] hover:text-[#00193c]"
-              }`}
-            >
-              Detailed Log
-            </button>
-            <button
-              onClick={() => setViewMode("summary")}
-              className={`px-5 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
-                viewMode === "summary"
-                  ? "bg-white text-[#00193c] shadow-xs"
-                  : "text-[#43474f] hover:text-[#00193c]"
-              }`}
-            >
-              Overhead Summary
-            </button>
-          </div>
+
         </div>
       </div>
 
@@ -604,18 +613,16 @@ export default function ReportsPage() {
         <button
           type="button"
           onClick={() => setSelectedCategoryFilter("all")}
-          className={`text-left bg-white border p-4.5 rounded-xl flex flex-col justify-between transition-all cursor-pointer card-shadow ${
-            selectedCategoryFilter === "all"
+          className={`text-left bg-white border p-4.5 rounded-xl flex flex-col justify-between transition-all cursor-pointer card-shadow ${selectedCategoryFilter === "all"
               ? "border-[#00193c] ring-2 ring-[#00193c]/30 shadow-md bg-blue-50/20"
               : "border-[#c4c6d1] hover:border-slate-400"
-          }`}
+            }`}
           title="Click to show all expense categories"
         >
           <div className="flex justify-between items-start">
             <span className="material-symbols-outlined text-rose-700 text-[20px]">payments</span>
-            <span className={`font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-full ${
-              selectedCategoryFilter === "all" ? "bg-[#00193c] text-white" : "bg-rose-50 text-rose-700"
-            }`}>
+            <span className={`font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-full ${selectedCategoryFilter === "all" ? "bg-[#00193c] text-white" : "bg-rose-50 text-rose-700"
+              }`}>
               {selectedCategoryFilter === "all" ? "Active Filter" : "All Purchases"}
             </span>
           </div>
@@ -628,18 +635,16 @@ export default function ReportsPage() {
         <button
           type="button"
           onClick={() => setSelectedCategoryFilter(selectedCategoryFilter === "fuel" ? "all" : "fuel")}
-          className={`text-left bg-white border p-4.5 rounded-xl flex flex-col justify-between transition-all cursor-pointer card-shadow ${
-            selectedCategoryFilter === "fuel"
+          className={`text-left bg-white border p-4.5 rounded-xl flex flex-col justify-between transition-all cursor-pointer card-shadow ${selectedCategoryFilter === "fuel"
               ? "border-[#00193c] ring-2 ring-[#00193c]/30 shadow-md bg-blue-50/30"
               : "border-[#c4c6d1] hover:border-slate-400"
-          }`}
+            }`}
           title="Click to filter statement to Fuel Costs"
         >
           <div className="flex justify-between items-start">
             <span className="material-symbols-outlined text-[#00193c] text-[20px]">local_gas_station</span>
-            <span className={`font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-full ${
-              selectedCategoryFilter === "fuel" ? "bg-[#00193c] text-white" : "bg-blue-50 text-blue-900"
-            }`}>
+            <span className={`font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-full ${selectedCategoryFilter === "fuel" ? "bg-[#00193c] text-white" : "bg-blue-50 text-blue-900"
+              }`}>
               {selectedCategoryFilter === "fuel" ? "Filtered" : "Filter Fuel"}
             </span>
           </div>
@@ -652,18 +657,16 @@ export default function ReportsPage() {
         <button
           type="button"
           onClick={() => setSelectedCategoryFilter(selectedCategoryFilter === "allowances" ? "all" : "allowances")}
-          className={`text-left bg-white border p-4.5 rounded-xl flex flex-col justify-between transition-all cursor-pointer card-shadow ${
-            selectedCategoryFilter === "allowances"
+          className={`text-left bg-white border p-4.5 rounded-xl flex flex-col justify-between transition-all cursor-pointer card-shadow ${selectedCategoryFilter === "allowances"
               ? "border-amber-600 ring-2 ring-amber-500/30 shadow-md bg-amber-50/30"
               : "border-[#c4c6d1] hover:border-slate-400"
-          }`}
+            }`}
           title="Click to filter statement to Driver & Helper Allowances"
         >
           <div className="flex justify-between items-start">
             <span className="material-symbols-outlined text-amber-700 text-[20px]">badge</span>
-            <span className={`font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-full ${
-              selectedCategoryFilter === "allowances" ? "bg-amber-800 text-white" : "bg-amber-50 text-amber-900"
-            }`}>
+            <span className={`font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-full ${selectedCategoryFilter === "allowances" ? "bg-amber-800 text-white" : "bg-amber-50 text-amber-900"
+              }`}>
               {selectedCategoryFilter === "allowances" ? "Filtered" : "Filter Allowances"}
             </span>
           </div>
@@ -678,18 +681,16 @@ export default function ReportsPage() {
         <button
           type="button"
           onClick={() => setSelectedCategoryFilter(selectedCategoryFilter === "tolls_repairs" ? "all" : "tolls_repairs")}
-          className={`text-left bg-white border p-4.5 rounded-xl flex flex-col justify-between transition-all cursor-pointer card-shadow ${
-            selectedCategoryFilter === "tolls_repairs"
+          className={`text-left bg-white border p-4.5 rounded-xl flex flex-col justify-between transition-all cursor-pointer card-shadow ${selectedCategoryFilter === "tolls_repairs"
               ? "border-indigo-600 ring-2 ring-indigo-500/30 shadow-md bg-indigo-50/30"
               : "border-[#c4c6d1] hover:border-slate-400"
-          }`}
+            }`}
           title="Click to filter statement to Tolls & Repairs"
         >
           <div className="flex justify-between items-start">
             <span className="material-symbols-outlined text-indigo-700 text-[20px]">build</span>
-            <span className={`font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-full ${
-              selectedCategoryFilter === "tolls_repairs" ? "bg-indigo-900 text-white" : "bg-indigo-50 text-indigo-900"
-            }`}>
+            <span className={`font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-full ${selectedCategoryFilter === "tolls_repairs" ? "bg-indigo-900 text-white" : "bg-indigo-50 text-indigo-900"
+              }`}>
               {selectedCategoryFilter === "tolls_repairs" ? "Filtered" : "Filter Maint & Misc"}
             </span>
           </div>
@@ -709,7 +710,7 @@ export default function ReportsPage() {
       {/* NO HEAVY DARK BLUE FILLED BANNERS - SAVES PRINTER INK & MATCHES BOND PAPER */}
       {/* ========================================================================= */}
       <div className="bg-white rounded-xl border border-slate-900 shadow-md p-6 print:p-0 print:border-none print:shadow-none space-y-4 font-sans">
-        
+
         {/* Official Header Letterhead */}
         <div className="border-b-2 border-slate-900 pb-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -721,7 +722,15 @@ export default function ReportsPage() {
             </div>
           </div>
           <div className="text-right font-mono text-[10px] text-slate-900">
-            <p className="font-extrabold text-slate-900 text-xs">AUDIT NO: {auditNo}</p>
+            <p className="font-extrabold text-slate-900 text-xs uppercase">
+              As of: {
+                filterPeriod === "daily" ? new Date(selectedDay).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) :
+                filterPeriod === "monthly" ? `${MONTH_NAMES[selectedMonth]} ${selectedYear}` : 
+                filterPeriod === "yearly" ? `YEAR ${selectedYear}` : 
+                filterPeriod === "custom" ? `${customStartDate} to ${customEndDate}` :
+                "OVERALL"
+              } | Status: {statusFilter}
+            </p>
             <p className="text-emerald-800 font-extrabold mt-0.5 uppercase">OFFICIAL EXPENSES STATEMENT</p>
           </div>
         </div>
@@ -824,11 +833,10 @@ export default function ReportsPage() {
                         <p className="text-slate-700 text-[9.5px] font-semibold">{t.origin || "CDO"} → {t.destination}</p>
                       </td>
                       <td className="p-2 border border-slate-900 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9.5px] font-bold uppercase border ${
-                          t.status === "Active"
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9.5px] font-bold uppercase border ${t.status === "Active"
                             ? "bg-amber-50 text-amber-900 border-amber-400"
                             : "bg-emerald-50 text-emerald-900 border-emerald-400"
-                        }`}>
+                          }`}>
                           {t.status === "Completed" ? "Completed" : "Active"}
                         </span>
                       </td>
@@ -1001,7 +1009,7 @@ export default function ReportsPage() {
             onClick={(e) => e.stopPropagation()}
             className="bg-white rounded-xl shadow-2xl border border-slate-300 w-full max-w-4xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 cursor-default"
           >
-            
+
             {/* Modal Header */}
             <div className="px-6 py-4 bg-[#00193c] text-white flex items-center justify-between">
               <div>

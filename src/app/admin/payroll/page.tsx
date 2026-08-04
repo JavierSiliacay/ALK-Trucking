@@ -11,13 +11,13 @@ type Period = "daily" | "monthly" | "yearly" | "overall";
 
 export default function CrewSettlementsPage() {
   const { trips, masterData, isLoaded } = useTrips();
-  
+
   const [selectedRole, setSelectedRole] = useState<"Driver" | "Helper">("Driver");
   const [selectedCrew, setSelectedCrew] = useState<string>("");
   const [filterPeriod, setFilterPeriod] = useState<Period>("monthly");
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-  
+
   const [deductions, setDeductions] = useState<number>(0);
   const [bonus, setBonus] = useState<number>(0);
 
@@ -57,7 +57,7 @@ export default function CrewSettlementsPage() {
   // Filter trips for the selected crew member and date range
   const crewTrips = useMemo(() => {
     if (!selectedCrew) return [];
-    
+
     return trips.filter(t => {
       // 1. Crew match
       let isMatch = false;
@@ -68,7 +68,7 @@ export default function CrewSettlementsPage() {
       // 2. Date match
       const dateStr = t.completedAt ? t.completedAt.split("T")[0] : t.dateOfTravel;
       const tDate = new Date(dateStr);
-      
+
       if (filterPeriod === "monthly") {
         return tDate.getMonth() === selectedMonth && tDate.getFullYear() === selectedYear;
       }
@@ -111,7 +111,7 @@ export default function CrewSettlementsPage() {
         ========================================================
       */}
       <div className="flex flex-col lg:flex-row gap-4 mb-6 no-print bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-sm">
-        
+
         {/* Role & Crew Selection */}
         <div className="flex flex-col sm:flex-row gap-3 flex-1">
           <div className="flex flex-col gap-1.5">
@@ -255,13 +255,16 @@ export default function CrewSettlementsPage() {
             <div>
               <h1 className="text-2xl font-black text-[#00193c] print:text-black uppercase tracking-tight">ALK Trucking Services</h1>
               <p className="text-sm font-semibold text-slate-600 print:text-black">CREW PAYROLL & SETTLEMENT SHEET</p>
+              <p className="text-xs font-bold text-slate-500 mt-1 uppercase">
+                As of: {filterPeriod === "monthly" ? `${MONTH_NAMES[selectedMonth]} ${selectedYear}` : filterPeriod === "yearly" ? `YEAR ${selectedYear}` : "OVERALL"}
+              </p>
             </div>
           </div>
           <div className="text-right">
             <p className="text-sm font-bold text-slate-500 uppercase">Period</p>
             <p className="text-lg font-black text-[#00193c] print:text-black uppercase">
-              {filterPeriod === "monthly" ? `${MONTH_NAMES[selectedMonth]} ${selectedYear}` : 
-               filterPeriod === "yearly" ? `YEAR ${selectedYear}` : "OVERALL"}
+              {filterPeriod === "monthly" ? `${MONTH_NAMES[selectedMonth]} ${selectedYear}` :
+                filterPeriod === "yearly" ? `YEAR ${selectedYear}` : "OVERALL"}
             </p>
           </div>
         </div>
@@ -322,8 +325,8 @@ export default function CrewSettlementsPage() {
                   });
 
                   return (
-                    <tr 
-                      key={t.id} 
+                    <tr
+                      key={t.id}
                       onClick={() => setInspectingTrip(t)}
                       className="hover:bg-slate-100 border-b border-slate-300 print-border-black cursor-pointer transition-colors"
                     >
@@ -347,21 +350,21 @@ export default function CrewSettlementsPage() {
               <span className="text-xs font-bold text-slate-600 print:text-black uppercase">Gross Accrued Wages:</span>
               <span className="text-sm font-black text-slate-900">₱{accruedAllowances.toLocaleString()}.00</span>
             </div>
-            
+
             {bonus > 0 && (
               <div className="flex justify-between items-center p-3 border-b border-slate-900 print-border-black bg-emerald-50/50">
                 <span className="text-xs font-bold text-emerald-700 print:text-black uppercase">Add: Bonuses / Adjustments</span>
                 <span className="text-sm font-black text-emerald-700 print:text-black">+ ₱{bonus.toLocaleString()}.00</span>
               </div>
             )}
-            
+
             {deductions > 0 && (
               <div className="flex justify-between items-center p-3 border-b border-slate-900 print-border-black bg-rose-50/50">
                 <span className="text-xs font-bold text-rose-700 print:text-black uppercase">Less: Cash Advances / Ded.</span>
                 <span className="text-sm font-black text-rose-700 print:text-black">- ₱{deductions.toLocaleString()}.00</span>
               </div>
             )}
-            
+
             <div className="flex justify-between items-center p-4 bg-slate-100 print-bg-gray border-t-2 border-slate-900 print-border-black">
               <span className="text-sm font-black text-[#00193c] print:text-black uppercase tracking-widest">NET PAYOUT:</span>
               <span className="text-xl font-black text-[#00193c] print:text-black">₱{netPayout.toLocaleString()}.00</span>
@@ -390,9 +393,9 @@ export default function CrewSettlementsPage() {
       </div>
 
       {/* Trip Inspector Modal */}
-      <TripInspectorModal 
-        trip={inspectingTrip} 
-        onClose={() => setInspectingTrip(null)} 
+      <TripInspectorModal
+        trip={inspectingTrip}
+        onClose={() => setInspectingTrip(null)}
       />
     </PageShell>
   );

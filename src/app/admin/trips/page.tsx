@@ -73,12 +73,12 @@ export default function TripsPage() {
 
   return (
     <div className="p-6 max-w-[1440px] mx-auto w-full space-y-6">
-      
+
       {/* Page Title & Primary Action Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4 no-print">
         <div>
           <h2 className="font-extrabold text-2xl text-[#00193c] font-manrope">Trips Management</h2>
-          <p className="text-[#43474f] text-xs mt-0.5">Oversee and coordinate active fleet shipments for ALK Trucking PH.</p>
+          <p className="text-[#43474f] text-xs mt-0.5">Oversee and coordinate active fleet shipments for ALK Trucking Services.</p>
         </div>
 
         {/* Large Primary Add Trip Button */}
@@ -96,7 +96,7 @@ export default function TripsPage() {
 
       {/* DEDICATED TABLE CONTROL TOOLBAR (HIGH-VISIBILITY SEARCH & TABS) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 bg-slate-50 p-3 rounded-2xl border border-slate-200 shadow-2xs no-print">
-        
+
         {/* Prominent High-Visibility Search Bar (Primary Staff Focal Point) */}
         <div className="relative w-full sm:w-[400px]">
           <span className="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">
@@ -124,21 +124,19 @@ export default function TripsPage() {
         <div className="flex bg-[#e5e8eb] p-1 rounded-xl shrink-0">
           <button
             onClick={() => setActiveTab("active")}
-            className={`px-5 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
-              activeTab === "active"
+            className={`px-5 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${activeTab === "active"
                 ? "bg-white text-[#00193c] shadow-xs"
                 : "text-[#43474f] hover:text-[#00193c]"
-            }`}
+              }`}
           >
             Active Trips ({activeTrips.length})
           </button>
           <button
             onClick={() => setActiveTab("completed")}
-            className={`px-5 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${
-              activeTab === "completed"
+            className={`px-5 py-1.5 rounded-lg font-bold text-xs transition-all cursor-pointer ${activeTab === "completed"
                 ? "bg-white text-[#00193c] shadow-xs"
                 : "text-[#43474f] hover:text-[#00193c]"
-            }`}
+              }`}
           >
             Completed Trips ({completedTrips.length})
           </button>
