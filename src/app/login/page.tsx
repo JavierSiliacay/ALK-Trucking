@@ -11,7 +11,7 @@ export default function LoginPage() {
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
-    await signIn("google", { callbackUrl: "/admin" });
+    await signIn("google", { callbackUrl: "/authorizing" });
   };
 
   return (
