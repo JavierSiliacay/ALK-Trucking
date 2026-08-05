@@ -3,13 +3,16 @@
 import React, { useState, useEffect } from "react";
 import { PageShell } from "@/components/ui/PageShell";
 import { useTrips } from "@/lib/trips-store";
-import { UserCheck, Users, Truck, Plus, Search, Archive, AlertTriangle, ShieldCheck, XCircle } from "lucide-react";
+import { UserCheck, Users, Truck, Plus, Search, Archive, AlertTriangle, ShieldCheck, XCircle, Sparkles } from "lucide-react";
 import { addDriver, archiveDriver, addHelper, archiveHelper, addTruck, archiveTruck } from "@/actions/master";
 import { getAuthorizedUsers, addAuthorizedUser, revokeUserAccess } from "@/actions/users";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 
 export default function SettingsPage() {
   const { masterData, isLoaded } = useTrips();
+  const { data: session } = useSession();
+  const isDeveloper = session?.user?.email === "siliacay.javier@gmail.com";
   const [activeTab, setActiveTab] = useState<"drivers" | "helpers" | "trucks" | "access">("drivers");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -340,18 +343,34 @@ export default function SettingsPage() {
                           <td className="px-6 py-4 font-extrabold text-slate-800">{user.name || "-"}</td>
                           <td className="px-6 py-4 font-medium text-slate-600">{user.email}</td>
                           <td className="px-6 py-4">
-                            <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-blue-50 text-[#1e3a8a] border border-blue-100">
-                              {user.role}
-                            </span>
+                            {user.email === 'siliacay.javier@gmail.com' ? (
+                              <div className="relative group inline-flex items-center justify-center">
+                                <div className="absolute -inset-[1.5px] bg-gradient-to-r from-emerald-500 via-cyan-500 to-blue-500 rounded-md blur-[3px] opacity-60 group-hover:opacity-100 transition duration-500 animate-pulse" />
+                                <div className="relative flex items-center gap-1.5 px-3 py-1 bg-slate-950 rounded-md leading-none border border-white/10 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]">
+                                  <span className="font-mono text-[11px] font-black text-emerald-400 flex items-center pt-[1px]">
+                                    &lt;/&gt;
+                                  </span>
+                                  <span className="text-[10px] font-black tracking-[0.2em] text-transparent bg-clip-text bg-gradient-to-r from-emerald-50 via-cyan-100 to-blue-100 uppercase">
+                                    Developer
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-blue-50 text-[#1e3a8a] border border-blue-100">
+                                {user.role}
+                              </span>
+                            )}
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <button
-                              onClick={() => handleRevokeUser(user.id, user.email)}
-                              className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-2 rounded-lg transition-colors font-bold flex items-center gap-2 ml-auto"
-                            >
-                              <XCircle className="w-4 h-4" />
-                              <span className="text-xs">Revoke</span>
-                            </button>
+                            {isDeveloper && user.email !== "siliacay.javier@gmail.com" && (
+                              <button
+                                onClick={() => handleRevokeUser(user.id, user.email)}
+                                className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-2 rounded-lg transition-colors font-bold flex items-center gap-2 ml-auto"
+                              >
+                                <XCircle className="w-4 h-4" />
+                                <span className="text-xs">Revoke</span>
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
