@@ -3,6 +3,7 @@
 import React from "react";
 import { X, Printer, Check, MapPin, Truck, User, Calendar, CreditCard, DollarSign } from "lucide-react";
 import { Trip, calculateTripTotals } from "@/lib/trips-store";
+import { formatDateLong } from "@/lib/utils";
 
 interface TripInspectorModalProps {
   trip: Trip | null;
@@ -15,8 +16,8 @@ export default function TripInspectorModal({ trip, onClose, onPrint }: TripInspe
 
   const { totalExpense, remainder } = calculateTripTotals(trip);
   const compDate = trip.completedAt
-    ? new Date(trip.completedAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
-    : trip.dateOfTravel;
+    ? formatDateLong(trip.completedAt)
+    : formatDateLong(trip.dateOfTravel);
 
   return (
     <div
@@ -123,6 +124,7 @@ export default function TripInspectorModal({ trip, onClose, onPrint }: TripInspe
                     <th className="p-2">Category</th>
                     <th className="p-2">Description</th>
                     <th className="p-2 text-right">Amount</th>
+                    <th className="p-2">Remarks</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 font-mono text-[11px]">
@@ -131,11 +133,12 @@ export default function TripInspectorModal({ trip, onClose, onPrint }: TripInspe
                       <td className="p-2 font-bold text-[#00193c] font-sans">{e.category}</td>
                       <td className="p-2 text-gray-700 font-sans">{e.description || "Operational expense"}</td>
                       <td className="p-2 text-right font-bold text-rose-700">₱{Number(e.amount || 0).toLocaleString()}.00</td>
+                      <td className="p-2 text-gray-600 font-sans">{e.remarks || "—"}</td>
                     </tr>
                   ))}
                   {trip.expenses.length === 0 && (
                     <tr>
-                      <td colSpan={3} className="p-4 text-center text-gray-400 italic font-sans">No expenses recorded.</td>
+                      <td colSpan={4} className="p-4 text-center text-gray-400 italic font-sans">No expenses recorded.</td>
                     </tr>
                   )}
                 </tbody>

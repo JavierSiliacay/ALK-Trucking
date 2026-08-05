@@ -44,7 +44,6 @@ export default function ReportsPage() {
   const [selectedOverheadCategory, setSelectedOverheadCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "completed">("all");
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<"all" | "fuel" | "allowances" | "tolls_repairs">("all");
   const [showFinancials, setShowFinancials] = useState<boolean>(true);
   // Stable Audit Number to prevent SSR hydration mismatch
   const auditNo = "AUD-600383";
@@ -61,26 +60,6 @@ export default function ReportsPage() {
         return false;
       }
 
-      // Interactive Metric Card Quick Category Filter
-      if (selectedCategoryFilter === "fuel") {
-        const hasFuel = t.expenses.some((e) => {
-          const c = (e.category || "").toUpperCase();
-          return c === "DIESEL" || c.includes("FUEL");
-        });
-        if (!hasFuel) return false;
-      } else if (selectedCategoryFilter === "allowances") {
-        const hasAllowance = t.expenses.some((e) => {
-          const c = (e.category || "").toUpperCase();
-          return c === "DRIVER RATE" || c === "HELPER 1 RATE" || c === "HELPER 2 RATE" || c === "STRIPPER" || c.includes("ALLOWANCE") || c.includes("DRIVER") || c.includes("HELPER");
-        });
-        if (!hasAllowance) return false;
-      } else if (selectedCategoryFilter === "tolls_repairs") {
-        const hasTollsRepairs = t.expenses.some((e) => {
-          const c = (e.category || "").toUpperCase();
-          return c === "MAINTENANCE" || c === "CHARGE" || c === "STICKER" || c === "SOP" || c.includes("TOLL") || c.includes("REPAIR") || c.includes("MISC");
-        });
-        if (!hasTollsRepairs) return false;
-      }
       if (tokens.length > 0) {
         const searchableBlob = [
           t.id,
@@ -211,21 +190,18 @@ export default function ReportsPage() {
         const catStr = (e.category || "").toUpperCase();
         let isMatch = false;
 
-        if (categoryKey.includes("fuel")) {
+        if (categoryKey.includes("total") || categoryKey === "total expenses") {
+          isMatch = true;
+        } else if (categoryKey.includes("fuel")) {
           isMatch = catStr === "DIESEL" || catStr.includes("FUEL");
-        } else if (categoryKey.includes("driver")) {
-          isMatch = catStr === "DRIVER RATE" || catStr.includes("DRIVER");
-        } else if (categoryKey.includes("helper")) {
-          isMatch = catStr === "HELPER 1 RATE" || catStr === "HELPER 2 RATE" || catStr === "STRIPPER" || catStr.includes("HELPER");
-        } else if (categoryKey.includes("maintenance")) {
-          isMatch = catStr === "MAINTENANCE" || catStr.includes("REPAIR");
-        } else if (categoryKey.includes("misc") || categoryKey.includes("other")) {
-          // Everything else
+        } else if (categoryKey.includes("allowance") || categoryKey.includes("wage")) {
+          isMatch = catStr === "DRIVER RATE" || catStr.includes("DRIVER") || catStr === "HELPER 1 RATE" || catStr === "HELPER 2 RATE" || catStr === "STRIPPER" || catStr.includes("HELPER");
+        } else if (categoryKey.includes("maintenance") || categoryKey.includes("misc")) {
+          // Maintenance & Misc
           isMatch = !(
             catStr === "DIESEL" || catStr.includes("FUEL") ||
             catStr === "DRIVER RATE" || catStr.includes("DRIVER") ||
-            catStr === "HELPER 1 RATE" || catStr === "HELPER 2 RATE" || catStr === "STRIPPER" || catStr.includes("HELPER") ||
-            catStr === "MAINTENANCE" || catStr.includes("REPAIR")
+            catStr === "HELPER 1 RATE" || catStr === "HELPER 2 RATE" || catStr === "STRIPPER" || catStr.includes("HELPER")
           );
         }
 
@@ -608,99 +584,63 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* Interactive Bento Expense Summary Filter Cards (NO-PRINT) */}
+      {/* Bento Expense Summary Cards (NO-PRINT) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 no-print">
-        <button
-          type="button"
-          onClick={() => setSelectedCategoryFilter("all")}
-          className={`text-left bg-white border p-4.5 rounded-xl flex flex-col justify-between transition-all cursor-pointer card-shadow ${selectedCategoryFilter === "all"
-              ? "border-[#00193c] ring-2 ring-[#00193c]/30 shadow-md bg-blue-50/20"
-              : "border-[#c4c6d1] hover:border-slate-400"
-            }`}
-          title="Click to show all expense categories"
+        <div 
+          onClick={() => setSelectedOverheadCategory("Total Expenses")}
+          className="bg-white border border-[#c4c6d1] p-4.5 rounded-xl flex flex-col justify-between card-shadow cursor-pointer hover:bg-slate-50 transition-colors group"
         >
           <div className="flex justify-between items-start">
-            <span className="material-symbols-outlined text-rose-700 text-[20px]">payments</span>
-            <span className={`font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-full ${selectedCategoryFilter === "all" ? "bg-[#00193c] text-white" : "bg-rose-50 text-rose-700"
-              }`}>
-              {selectedCategoryFilter === "all" ? "Active Filter" : "All Purchases"}
-            </span>
+            <span className="material-symbols-outlined text-rose-700 text-[20px] group-hover:scale-110 transition-transform">payments</span>
           </div>
           <div className="mt-3">
-            <span className="text-[#43474f] font-bold text-xs uppercase tracking-wide">Total Expenses</span>
+            <span className="text-[#43474f] font-bold text-xs uppercase tracking-wide group-hover:text-[#00193c] transition-colors">Total Expenses</span>
             <h3 className="font-extrabold text-2xl text-rose-700 mt-0.5 font-mono">₱{totals.total.toLocaleString()}.00</h3>
           </div>
-        </button>
+        </div>
 
-        <button
-          type="button"
-          onClick={() => setSelectedCategoryFilter(selectedCategoryFilter === "fuel" ? "all" : "fuel")}
-          className={`text-left bg-white border p-4.5 rounded-xl flex flex-col justify-between transition-all cursor-pointer card-shadow ${selectedCategoryFilter === "fuel"
-              ? "border-[#00193c] ring-2 ring-[#00193c]/30 shadow-md bg-blue-50/30"
-              : "border-[#c4c6d1] hover:border-slate-400"
-            }`}
-          title="Click to filter statement to Fuel Costs"
+        <div 
+          onClick={() => setSelectedOverheadCategory("Fuel Costs")}
+          className="bg-white border border-[#c4c6d1] p-4.5 rounded-xl flex flex-col justify-between card-shadow cursor-pointer hover:bg-slate-50 transition-colors group"
         >
           <div className="flex justify-between items-start">
-            <span className="material-symbols-outlined text-[#00193c] text-[20px]">local_gas_station</span>
-            <span className={`font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-full ${selectedCategoryFilter === "fuel" ? "bg-[#00193c] text-white" : "bg-blue-50 text-blue-900"
-              }`}>
-              {selectedCategoryFilter === "fuel" ? "Filtered" : "Filter Fuel"}
-            </span>
+            <span className="material-symbols-outlined text-[#00193c] text-[20px] group-hover:scale-110 transition-transform">local_gas_station</span>
           </div>
           <div className="mt-3">
-            <span className="text-[#43474f] font-bold text-xs uppercase tracking-wide">Fuel Costs</span>
+            <span className="text-[#43474f] font-bold text-xs uppercase tracking-wide group-hover:text-[#00193c] transition-colors">Fuel Costs</span>
             <h3 className="font-extrabold text-2xl text-[#00193c] mt-0.5 font-mono">₱{totals.fuel.toLocaleString()}.00</h3>
           </div>
-        </button>
+        </div>
 
-        <button
-          type="button"
-          onClick={() => setSelectedCategoryFilter(selectedCategoryFilter === "allowances" ? "all" : "allowances")}
-          className={`text-left bg-white border p-4.5 rounded-xl flex flex-col justify-between transition-all cursor-pointer card-shadow ${selectedCategoryFilter === "allowances"
-              ? "border-amber-600 ring-2 ring-amber-500/30 shadow-md bg-amber-50/30"
-              : "border-[#c4c6d1] hover:border-slate-400"
-            }`}
-          title="Click to filter statement to Driver & Helper Allowances"
+        <div 
+          onClick={() => setSelectedOverheadCategory("Allowances")}
+          className="bg-white border border-[#c4c6d1] p-4.5 rounded-xl flex flex-col justify-between card-shadow cursor-pointer hover:bg-slate-50 transition-colors group"
         >
           <div className="flex justify-between items-start">
-            <span className="material-symbols-outlined text-amber-700 text-[20px]">badge</span>
-            <span className={`font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-full ${selectedCategoryFilter === "allowances" ? "bg-amber-800 text-white" : "bg-amber-50 text-amber-900"
-              }`}>
-              {selectedCategoryFilter === "allowances" ? "Filtered" : "Filter Allowances"}
-            </span>
+            <span className="material-symbols-outlined text-amber-700 text-[20px] group-hover:scale-110 transition-transform">badge</span>
           </div>
           <div className="mt-3">
-            <span className="text-[#43474f] font-bold text-xs uppercase tracking-wide">Allowances</span>
+            <span className="text-[#43474f] font-bold text-xs uppercase tracking-wide group-hover:text-[#00193c] transition-colors">Allowances</span>
             <h3 className="font-extrabold text-2xl text-amber-900 mt-0.5 font-mono">
               ₱{(totals.driverWages + totals.helperWages).toLocaleString()}.00
             </h3>
           </div>
-        </button>
+        </div>
 
-        <button
-          type="button"
-          onClick={() => setSelectedCategoryFilter(selectedCategoryFilter === "tolls_repairs" ? "all" : "tolls_repairs")}
-          className={`text-left bg-white border p-4.5 rounded-xl flex flex-col justify-between transition-all cursor-pointer card-shadow ${selectedCategoryFilter === "tolls_repairs"
-              ? "border-indigo-600 ring-2 ring-indigo-500/30 shadow-md bg-indigo-50/30"
-              : "border-[#c4c6d1] hover:border-slate-400"
-            }`}
-          title="Click to filter statement to Tolls & Repairs"
+        <div 
+          onClick={() => setSelectedOverheadCategory("Maintenance & Misc")}
+          className="bg-white border border-[#c4c6d1] p-4.5 rounded-xl flex flex-col justify-between card-shadow cursor-pointer hover:bg-slate-50 transition-colors group"
         >
           <div className="flex justify-between items-start">
-            <span className="material-symbols-outlined text-indigo-700 text-[20px]">build</span>
-            <span className={`font-extrabold text-[10px] uppercase px-2 py-0.5 rounded-full ${selectedCategoryFilter === "tolls_repairs" ? "bg-indigo-900 text-white" : "bg-indigo-50 text-indigo-900"
-              }`}>
-              {selectedCategoryFilter === "tolls_repairs" ? "Filtered" : "Filter Maint & Misc"}
-            </span>
+            <span className="material-symbols-outlined text-indigo-700 text-[20px] group-hover:scale-110 transition-transform">build</span>
           </div>
           <div className="mt-3">
-            <span className="text-[#43474f] font-bold text-xs uppercase tracking-wide">Maintenance & Misc</span>
+            <span className="text-[#43474f] font-bold text-xs uppercase tracking-wide group-hover:text-[#00193c] transition-colors">Maintenance & Misc</span>
             <h3 className="font-extrabold text-2xl text-indigo-950 mt-0.5 font-mono">
               ₱{(totals.maintenance + totals.misc).toLocaleString()}.00
             </h3>
           </div>
-        </button>
+        </div>
       </div>
 
 
@@ -889,7 +829,6 @@ export default function ReportsPage() {
                           type="button"
                           onClick={() => {
                             setSearchQuery("");
-                            setSelectedCategoryFilter("all");
                             setFilterPeriod("monthly");
                           }}
                           className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 bg-[#00193c] hover:bg-blue-900 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition-all no-print"

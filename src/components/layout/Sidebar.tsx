@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
+import { ChevronLeft, ChevronRight, LogOut, User } from "lucide-react";
 import TripFormModal from "@/components/trips/TripFormModal";
 import { useTrips } from "@/lib/trips-store";
 
@@ -31,6 +32,7 @@ export default function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
+  const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -93,7 +95,76 @@ export default function Sidebar() {
             );
           })}
         </nav>
+
+        {/* User Profile & Sign Out Footer */}
+        {mounted && session?.user && (
+          <div className="p-3 border-t border-white/10 mt-auto">
+            {!isCollapsed ? (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2.5 bg-white/5 rounded-xl p-2.5">
+                  <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-blue-900 flex items-center justify-center">
+                    {session.user.image ? (
+                      <img src={session.user.image} alt={session.user.name || "User"} className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="w-4 h-4 text-blue-300" />
+                    )}
+                  </div>
+                  <div className="overflow-hidden">
+                    <p className="text-white text-xs font-bold truncate">{session.user.name}</p>
+                    <p className="text-blue-300 text-[10px] truncate">{session.user.email}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsSignOutModalOpen(true)}
+                  className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-400 rounded-lg text-xs font-bold transition-all"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsSignOutModalOpen(true)}
+                className="w-full flex justify-center py-2 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white rounded-lg transition-all"
+                title="Sign Out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        )}
       </aside>
+
+      {/* Sign Out Modal Overlay - Portaled to document.body */}
+      {mounted && isSignOutModalOpen && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-sm rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 p-6 sm:p-8 text-center relative border border-slate-200">
+            <div className="w-16 h-16 bg-rose-50 border border-rose-100 rounded-full flex items-center justify-center mx-auto mb-5 relative">
+              <div className="absolute inset-0 rounded-full animate-ping bg-rose-100/50" style={{ animationDuration: '3s' }}></div>
+              <LogOut className="w-8 h-8 text-rose-500 relative z-10" />
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight mb-2">Ready to wrap up?</h2>
+            <p className="text-slate-500 font-medium text-sm leading-relaxed mb-8">
+              Great work today, <span className="font-bold text-slate-700">{session?.user?.name?.split(' ')[0] || 'team'}</span>! Please confirm if you're ready to securely end your session.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setIsSignOutModalOpen(false)}
+                className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 font-extrabold text-sm rounded-xl hover:bg-slate-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => signOut({ callbackUrl: "/login" })}
+                className="flex-1 px-4 py-3 bg-rose-600 text-white font-extrabold text-sm rounded-xl hover:bg-rose-700 transition-colors shadow-md shadow-rose-600/20 hover:-translate-y-0.5 active:translate-y-0"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </>
   );
 }

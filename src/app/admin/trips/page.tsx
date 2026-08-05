@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useTrips, Trip, calculateTripTotals } from "@/lib/trips-store";
+import { formatDateLong } from "@/lib/utils";
 import TripFormModal from "@/components/trips/TripFormModal";
 import DigitalPaperForm from "@/components/trips/DigitalPaperForm";
 import TripInspectorModal from "@/components/trips/TripInspectorModal";
@@ -16,6 +17,8 @@ export default function TripsPage() {
     addTrip,
     updateTrip,
     markAsCompleted,
+    revertToActive,
+    deleteTrip,
   } = useTrips();
 
   const [activeTab, setActiveTab] = useState<"active" | "completed">("active");
@@ -25,6 +28,8 @@ export default function TripsPage() {
   const [viewingPaperTrip, setViewingPaperTrip] = useState<Trip | null>(null);
   const [inspectingTrip, setInspectingTrip] = useState<Trip | null>(null);
   const [confirmCompleteTrip, setConfirmCompleteTrip] = useState<Trip | null>(null);
+  const [confirmDeleteTrip, setConfirmDeleteTrip] = useState<Trip | null>(null);
+  const [confirmRevertTrip, setConfirmRevertTrip] = useState<Trip | null>(null);
   const [completionDate, setCompletionDate] = useState(new Date().toISOString().split("T")[0]);
 
   if (!isLoaded) {
@@ -68,6 +73,20 @@ export default function TripsPage() {
     if (confirmCompleteTrip) {
       markAsCompleted(confirmCompleteTrip.id, completionDate);
       setConfirmCompleteTrip(null);
+    }
+  };
+
+  const handleConfirmRevert = () => {
+    if (confirmRevertTrip) {
+      revertToActive(confirmRevertTrip.id);
+      setConfirmRevertTrip(null);
+    }
+  };
+
+  const handleDeleteTrip = () => {
+    if (confirmDeleteTrip) {
+      deleteTrip(confirmDeleteTrip.id);
+      setConfirmDeleteTrip(null);
     }
   };
 
@@ -169,7 +188,7 @@ export default function TripsPage() {
                     title="Click to view detailed Trip Inspector modal"
                   >
                     <td className="px-6 py-5 font-mono font-extrabold text-[#00193c] group-hover:underline">{t.seqNo || t.id}</td>
-                    <td className="px-6 py-5 text-[#181c1e]">{t.dateOfTravel}</td>
+                    <td className="px-6 py-5 text-[#181c1e]">{formatDateLong(t.dateOfTravel)}</td>
                     <td className="px-6 py-5">
                       <div className="flex flex-col">
                         <span className="font-extrabold text-[#181c1e]">{t.unit}</span>
@@ -179,7 +198,7 @@ export default function TripsPage() {
                     <td className="px-6 py-5">
                       <div className="flex flex-col">
                         <span className="font-semibold text-[#181c1e]">{t.driver}</span>
-                        <span className="text-[11px] text-slate-500">H: {t.helper1 || "None"}</span>
+                        <span className="text-[11px] text-slate-500">H: {[t.helper1, t.helper2].filter(Boolean).join(", ") || "None"}</span>
                       </div>
                     </td>
                     <td className="px-6 py-5 font-bold text-[#181c1e]">
@@ -216,6 +235,13 @@ export default function TripsPage() {
                           title="Print Form"
                         >
                           <span className="material-symbols-outlined text-[20px]">print</span>
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteTrip(t)}
+                          className="p-2 hover:bg-red-100 rounded-lg text-red-500 transition-colors cursor-pointer"
+                          title="Delete Trip"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">delete</span>
                         </button>
 
                         {/* Large Green Mark Completed Button */}
@@ -265,7 +291,7 @@ export default function TripsPage() {
               <tbody className="divide-y divide-[#c4c6d1]">
                 {filteredCompleted.map((t) => {
                   const { totalExpense } = calculateTripTotals(t);
-                  const displayDate = t.completedAt ? new Date(t.completedAt).toLocaleDateString() : t.dateOfTravel;
+                  const displayDate = t.completedAt ? formatDateLong(t.completedAt) : formatDateLong(t.dateOfTravel);
                   return (
                     <tr
                       key={t.id}
@@ -282,6 +308,13 @@ export default function TripsPage() {
                       <td className="px-6 py-5 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-2">
                           <button
+                            onClick={() => setConfirmRevertTrip(t)}
+                            className="p-2 hover:bg-amber-100 rounded-lg text-amber-600 transition-colors cursor-pointer"
+                            title="Revert to Active Trip"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">undo</span>
+                          </button>
+                          <button
                             onClick={() => setViewingPaperTrip(t)}
                             className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors cursor-pointer"
                             title="View Form"
@@ -294,6 +327,13 @@ export default function TripsPage() {
                             title="Print Form"
                           >
                             <span className="material-symbols-outlined text-[20px]">print</span>
+                          </button>
+                          <button
+                            onClick={() => setConfirmDeleteTrip(t)}
+                            className="p-2 hover:bg-red-100 rounded-lg text-red-500 transition-colors cursor-pointer"
+                            title="Delete Trip"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">delete</span>
                           </button>
                         </div>
                       </td>
@@ -384,6 +424,72 @@ export default function TripsPage() {
                 className="px-6 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white font-extrabold text-xs shadow-md transition-all cursor-pointer"
               >
                 Yes, Mark Completed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Revert to Active Confirmation Modal */}
+      {confirmRevertTrip && (
+        <div className="fixed inset-0 z-50 bg-[#00193c]/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl border border-slate-200 text-center animate-in fade-in zoom-in-95">
+            <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-[32px]">settings_backup_restore</span>
+            </div>
+            <h3 className="font-extrabold text-[#00193c] text-xl font-manrope">Revert Trip to Active</h3>
+            <p className="text-sm text-slate-500 mt-2">
+              Are you sure you want to revert trip <strong className="text-slate-800">{confirmRevertTrip.seqNo || confirmRevertTrip.id}</strong> back to Active status?
+            </p>
+            <p className="text-xs text-amber-600 font-semibold mt-2">
+              This will remove its completion date and move it back to the Active Trips queue.
+            </p>
+
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <button
+                onClick={() => setConfirmRevertTrip(null)}
+                className="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 font-bold text-xs hover:bg-slate-100 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmRevert}
+                className="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs shadow-md transition-all cursor-pointer"
+              >
+                Yes, Revert to Active
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {confirmDeleteTrip && (
+        <div className="fixed inset-0 z-50 bg-[#00193c]/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl border border-slate-200 text-center animate-in fade-in zoom-in-95">
+            <div className="w-12 h-12 bg-red-100 text-red-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-[32px]">delete_forever</span>
+            </div>
+            <h3 className="font-extrabold text-[#00193c] text-xl font-manrope">Delete Trip Record</h3>
+            <p className="text-sm text-slate-500 mt-2">
+              Are you sure you want to permanently delete trip <strong className="text-slate-800">{confirmDeleteTrip.seqNo || confirmDeleteTrip.id}</strong>?
+            </p>
+            <p className="text-xs text-red-500 font-semibold mt-2">
+              This action cannot be undone.
+            </p>
+
+            <div className="mt-6 flex items-center justify-center gap-3">
+              <button
+                onClick={() => setConfirmDeleteTrip(null)}
+                className="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-600 font-bold text-xs hover:bg-slate-100 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteTrip}
+                className="px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs shadow-md transition-all cursor-pointer"
+              >
+                Yes, Delete
               </button>
             </div>
           </div>

@@ -3,6 +3,7 @@
 import React from "react";
 import { Trip, calculateTripTotals } from "@/lib/trips-store";
 import { Printer, X } from "lucide-react";
+import { formatDateLong } from "@/lib/utils";
 
 interface DigitalPaperFormProps {
   trip: Trip;
@@ -111,8 +112,8 @@ export default function DigitalPaperForm({ trip, onClose }: DigitalPaperFormProp
               <span className="text-slate-800 border-b border-dashed border-slate-400 flex-1 px-1">{trip.helper2 || "—"}</span>
             </div>
             <div className="flex items-baseline">
-              <span className="font-bold w-32 uppercase text-slate-800">DATE OF TRAVEL:</span>
-              <span className="font-semibold text-slate-900 border-b border-dashed border-slate-400 flex-1 px-1">{trip.dateOfTravel || "—"}</span>
+              <span className="font-bold w-32 uppercase text-slate-800">DATE REQUEST:</span>
+              <span className="font-semibold text-slate-900 border-b border-dashed border-slate-400 flex-1 px-1">{formatDateLong(trip.dateOfTravel)}</span>
             </div>
           </div>
 
@@ -128,15 +129,17 @@ export default function DigitalPaperForm({ trip, onClose }: DigitalPaperFormProp
             </div>
             <div className="flex items-baseline">
               <span className="font-bold w-40 uppercase text-slate-800">GATE PASS DATE:</span>
-              <span className="text-slate-800 border-b border-dashed border-slate-400 flex-1 px-1">{trip.gatePassDate || "—"}</span>
+              <span className="text-slate-800 border-b border-dashed border-slate-400 flex-1 px-1">{formatDateLong(trip.gatePassDate)}</span>
             </div>
             <div className="flex items-baseline">
               <span className="font-bold w-40 uppercase text-slate-800">SEQ. NO.:</span>
               <span className="font-mono font-bold text-[#00193c] border-b border-dashed border-slate-400 flex-1 px-1">{trip.seqNo || trip.id}</span>
             </div>
             <div className="flex items-baseline">
-              <span className="font-bold w-40 uppercase text-slate-800">DESTINATION:</span>
-              <span className="font-bold text-slate-900 border-b border-dashed border-slate-400 flex-1 px-1">{trip.destination || "—"}</span>
+              <span className="font-bold w-40 uppercase text-slate-800">ROUTE (ORIGIN-DEST):</span>
+              <span className="font-bold text-slate-900 border-b border-dashed border-slate-400 flex-1 px-1">
+                {trip.origin ? `${trip.origin} - ${trip.destination}` : trip.destination || "—"}
+              </span>
             </div>
             <div className="flex items-baseline">
               <span className="font-bold w-40 uppercase text-slate-800">RATE (REVENUE):</span>
@@ -164,7 +167,7 @@ export default function DigitalPaperForm({ trip, onClose }: DigitalPaperFormProp
               {trip.expenses.map((exp) => (
                 <tr key={exp.id} className="hover:bg-slate-50">
                   <td className="p-2 border-r border-slate-900 font-bold uppercase text-slate-900">{exp.category}</td>
-                  <td className="p-2 border-r border-slate-900 text-slate-800">{exp.dateRequest || "—"}</td>
+                  <td className="p-2 border-r border-slate-900 text-slate-800">{exp.dateRequest ? formatDateLong(exp.dateRequest) : "—"}</td>
                   <td className="p-2 border-r border-slate-900 text-slate-800">{exp.rsNo || "—"}</td>
                   <td className="p-2 border-r border-slate-900 text-slate-900 font-sans">{exp.description || "—"}</td>
                   <td className="p-2 border-r border-slate-900 font-bold text-slate-900 text-right">
@@ -184,22 +187,24 @@ export default function DigitalPaperForm({ trip, onClose }: DigitalPaperFormProp
           </table>
         </div>
 
-        {/* Bottom Totals & Signatures Block */}
-        <div className="flex flex-col sm:flex-row items-stretch justify-between gap-6 pt-2">
-          {/* Status & Signatures */}
-          <div className="flex-1 space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="font-bold text-slate-800">STATUS:</span>
-              <span className={`px-2.5 py-0.5 rounded font-bold uppercase text-[11px] border ${
-                trip.status === "Active" ? "bg-amber-50 text-amber-900 border-amber-400" : "bg-emerald-50 text-emerald-900 border-emerald-400"
-              }`}>
+        {/* Financial Summary & Signatures */}
+        <div className="flex justify-between items-start gap-8">
+          {/* Signatures */}
+          <div className="flex-1 mt-6">
+            <div className="flex items-center gap-2 mb-10">
+              <span className="font-bold text-slate-800 text-xs">STATUS:</span>
+              <span className={`px-2 py-0.5 text-[10px] font-extrabold uppercase rounded border ${trip.status === "Active" ? "bg-white text-amber-600 border-amber-600" : "bg-white text-emerald-600 border-emerald-600"}`}>
                 {trip.status}
               </span>
-              {trip.completedAt && (
-                <span className="text-[10px] text-slate-500">
-                  Completed on {new Date(trip.completedAt).toLocaleDateString()}
-                </span>
-              )}
+            </div>
+            <div className="flex items-end gap-6">
+              <div className="flex-1">
+                {trip.completedAt && (
+                  <span className="text-[10px] text-slate-500">
+                    Completed on {new Date(trip.completedAt).toLocaleDateString()}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4 text-[10px] pt-6 border-t border-slate-300">
               <div className="border-t border-slate-900 pt-1 text-center font-bold text-slate-700 uppercase">

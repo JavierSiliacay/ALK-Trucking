@@ -1,32 +1,50 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { PageShell } from "@/components/ui/PageShell";
-import { useTrips, MasterTruck, MasterRoute } from "@/lib/trips-store";
-import { Plus, Trash2, UserCheck, Users, Truck, Building2, MapPin, DollarSign, Shield, Check } from "lucide-react";
+import { useTrips } from "@/lib/trips-store";
+import { UserCheck, Users, Truck, Plus, Search, Archive, AlertTriangle, ShieldCheck, XCircle } from "lucide-react";
+import { addDriver, archiveDriver, addHelper, archiveHelper, addTruck, archiveTruck } from "@/actions/master";
+import { getAuthorizedUsers, addAuthorizedUser, revokeUserAccess } from "@/actions/users";
+import { toast } from "sonner";
 
 export default function SettingsPage() {
-  const { masterData, updateMaster, isLoaded } = useTrips();
-  const [activeTab, setActiveTab] = useState<
-    "drivers" | "helpers" | "trucks" | "customers" | "owners" | "routes" | "categories"
-  >("drivers");
+  const { masterData, isLoaded } = useTrips();
+  const [activeTab, setActiveTab] = useState<"drivers" | "helpers" | "trucks" | "access">("drivers");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Input states for adding master data
-  const [newDriver, setNewDriver] = useState("");
-  const [newHelper, setNewHelper] = useState("");
+  // Modal states
+  const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
+  const [isHelperModalOpen, setIsHelperModalOpen] = useState(false);
+  const [isTruckModalOpen, setIsTruckModalOpen] = useState(false);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
 
+  // Auth states
+  const [authorizedUsers, setAuthorizedUsers] = useState<any[]>([]);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [newAuthEmail, setNewAuthEmail] = useState("");
+  const [newAuthName, setNewAuthName] = useState("");
+
+  useEffect(() => {
+    if (activeTab === "access") {
+      loadAuthorizedUsers();
+    }
+  }, [activeTab]);
+
+  const loadAuthorizedUsers = async () => {
+    setIsAuthLoading(true);
+    const users = await getAuthorizedUsers();
+    setAuthorizedUsers(users);
+    setIsAuthLoading(false);
+  };
+
+  // Form states
+  const [newName, setNewName] = useState("");
   const [truckUnit, setTruckUnit] = useState("");
   const [truckPlate, setTruckPlate] = useState("");
   const [truckOwner, setTruckOwner] = useState("ALK Trucking");
 
-  const [newCustomer, setNewCustomer] = useState("");
-  const [newOwner, setNewOwner] = useState("");
-
-  const [routeOrigin, setRouteOrigin] = useState("CDO");
-  const [routeDest, setRouteDest] = useState("");
-  const [routeDist, setRouteDist] = useState("");
-
-  const [newCategory, setNewCategory] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isLoaded) {
     return (
@@ -36,519 +54,516 @@ export default function SettingsPage() {
     );
   }
 
-  // Master Data Add Functions
-  const handleAddDriver = (e: React.FormEvent) => {
+  // Action Handlers
+  const handleAddDriver = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newDriver.trim()) return;
-    updateMaster({ drivers: [...masterData.drivers, newDriver.trim()] });
-    setNewDriver("");
+    if (!newName.trim()) return;
+    setIsSubmitting(true);
+    await addDriver(newName.trim());
+    setIsSubmitting(false);
+    setNewName("");
+    setIsDriverModalOpen(false);
   };
 
-  const handleDeleteDriver = (name: string) => {
-    updateMaster({ drivers: masterData.drivers.filter((d) => d !== name) });
+  const handleArchiveDriver = async (name: string) => {
+    if (confirm(`Are you sure you want to archive ${name}? They will no longer appear in new trips.`)) {
+      await archiveDriver(name);
+    }
   };
 
-  const handleAddHelper = (e: React.FormEvent) => {
+  const handleAddHelper = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newHelper.trim()) return;
-    updateMaster({ helpers: [...masterData.helpers, newHelper.trim()] });
-    setNewHelper("");
+    if (!newName.trim()) return;
+    setIsSubmitting(true);
+    await addHelper(newName.trim());
+    setIsSubmitting(false);
+    setNewName("");
+    setIsHelperModalOpen(false);
   };
 
-  const handleDeleteHelper = (name: string) => {
-    updateMaster({ helpers: masterData.helpers.filter((h) => h !== name) });
+  const handleArchiveHelper = async (name: string) => {
+    if (confirm(`Are you sure you want to archive ${name}? They will no longer appear in new trips.`)) {
+      await archiveHelper(name);
+    }
   };
 
-  const handleAddTruck = (e: React.FormEvent) => {
+  const handleAddTruck = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!truckUnit.trim() || !truckPlate.trim()) return;
-    const newTruck: MasterTruck = {
-      id: `t_${Date.now()}`,
-      unit: truckUnit.trim(),
-      plateNo: truckPlate.trim(),
-      owner: truckOwner || "ALK Trucking",
-    };
-    updateMaster({ trucks: [...masterData.trucks, newTruck] });
+    setIsSubmitting(true);
+    await addTruck(truckUnit.trim(), truckPlate.trim(), truckOwner);
+    setIsSubmitting(false);
     setTruckUnit("");
     setTruckPlate("");
+    setTruckOwner("ALK Trucking");
+    setIsTruckModalOpen(false);
   };
 
-  const handleDeleteTruck = (id: string) => {
-    updateMaster({ trucks: masterData.trucks.filter((t) => t.id !== id) });
+  const handleArchiveTruck = async (id: string, plateNo: string) => {
+    if (confirm(`Are you sure you want to archive Truck ${plateNo}? It will no longer appear in new trips.`)) {
+      await archiveTruck(id);
+    }
   };
 
-  const handleAddCustomer = (e: React.FormEvent) => {
+  const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCustomer.trim()) return;
-    updateMaster({ customers: [...masterData.customers, newCustomer.trim()] });
-    setNewCustomer("");
+    if (!newAuthEmail.trim()) return;
+    setIsSubmitting(true);
+    const res = await addAuthorizedUser(newAuthEmail.trim(), newAuthName.trim());
+    if (res.success) {
+      toast.success(res.message);
+      loadAuthorizedUsers();
+      setIsUserModalOpen(false);
+      setNewAuthEmail("");
+      setNewAuthName("");
+    } else {
+      toast.error(res.message);
+    }
+    setIsSubmitting(false);
   };
 
-  const handleDeleteCustomer = (name: string) => {
-    updateMaster({ customers: masterData.customers.filter((c) => c !== name) });
+  const handleRevokeUser = async (id: string, email: string) => {
+    if (confirm(`Are you sure you want to revoke access for ${email}? They will no longer be able to log in.`)) {
+      const res = await revokeUserAccess(id);
+      if (res.success) {
+        toast.success(res.message);
+        loadAuthorizedUsers();
+      } else {
+        toast.error(res.message);
+      }
+    }
   };
 
-  const handleAddOwner = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newOwner.trim()) return;
-    updateMaster({ owners: [...masterData.owners, newOwner.trim()] });
-    setNewOwner("");
-  };
-
-  const handleDeleteOwner = (name: string) => {
-    updateMaster({ owners: masterData.owners.filter((o) => o !== name) });
-  };
-
-  const handleAddRoute = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!routeOrigin.trim() || !routeDest.trim()) return;
-    const newR: MasterRoute = {
-      id: `r_${Date.now()}`,
-      origin: routeOrigin.trim(),
-      destination: routeDest.trim(),
-      distance: routeDist.trim() || "N/A",
-    };
-    updateMaster({ routes: [...masterData.routes, newR] });
-    setRouteDest("");
-    setRouteDist("");
-  };
-
-  const handleDeleteRoute = (id: string) => {
-    updateMaster({ routes: masterData.routes.filter((r) => r.id !== id) });
-  };
-
-  const handleAddCategory = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCategory.trim()) return;
-    updateMaster({ expenseCategories: [...masterData.expenseCategories, newCategory.trim()] });
-    setNewCategory("");
-  };
-
-  const handleDeleteCategory = (cat: string) => {
-    updateMaster({ expenseCategories: masterData.expenseCategories.filter((c) => c !== cat) });
-  };
+  // Filtering
+  const filteredDrivers = masterData.drivers.filter(d => d.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredHelpers = masterData.helpers.filter(h => h.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredTrucks = masterData.trucks.filter(t => t.plateNo.toLowerCase().includes(searchQuery.toLowerCase()) || t.unit.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredUsers = authorizedUsers.filter(u => u.email.toLowerCase().includes(searchQuery.toLowerCase()) || (u.name && u.name.toLowerCase().includes(searchQuery.toLowerCase())));
 
   return (
     <PageShell
       title="Settings"
-      subtitle="Master Data Management (Drivers, Trucks, Customers & Routes)"
+      subtitle="Manage your Core Fleet Assets and Security"
     >
-      {/* Master Data Tabs Bar */}
-      <div className="flex flex-wrap items-center gap-2 bg-slate-100 p-1.5 rounded-2xl mb-8">
-        <button
+      {/* Dashboard Cards for Navigation */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div 
           onClick={() => setActiveTab("drivers")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all cursor-pointer ${activeTab === "drivers" ? "bg-[#1e3a8a] text-white shadow-md" : "text-slate-600 hover:bg-slate-200"
-            }`}
+          className={`p-6 rounded-2xl cursor-pointer border-2 transition-all flex items-center gap-4 ${activeTab === "drivers" ? "bg-blue-50 border-[#1e3a8a] shadow-md" : "bg-white border-slate-200 hover:border-slate-300"}`}
         >
-          <UserCheck className="w-4 h-4" />
-          <span>Drivers ({masterData.drivers.length})</span>
-        </button>
+          <div className={`p-3 rounded-xl ${activeTab === "drivers" ? "bg-[#1e3a8a] text-white" : "bg-slate-100 text-slate-500"}`}>
+            <UserCheck className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-slate-900">Drivers</h3>
+            <p className="text-xs text-slate-500 font-bold">{masterData.drivers.length} Active</p>
+          </div>
+        </div>
 
-        <button
+        <div 
           onClick={() => setActiveTab("helpers")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all cursor-pointer ${activeTab === "helpers" ? "bg-[#1e3a8a] text-white shadow-md" : "text-slate-600 hover:bg-slate-200"
-            }`}
+          className={`p-6 rounded-2xl cursor-pointer border-2 transition-all flex items-center gap-4 ${activeTab === "helpers" ? "bg-blue-50 border-[#1e3a8a] shadow-md" : "bg-white border-slate-200 hover:border-slate-300"}`}
         >
-          <Users className="w-4 h-4" />
-          <span>Helpers ({masterData.helpers.length})</span>
-        </button>
+          <div className={`p-3 rounded-xl ${activeTab === "helpers" ? "bg-[#1e3a8a] text-white" : "bg-slate-100 text-slate-500"}`}>
+            <Users className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-slate-900">Helpers</h3>
+            <p className="text-xs text-slate-500 font-bold">{masterData.helpers.length} Active</p>
+          </div>
+        </div>
 
-        <button
+        <div 
           onClick={() => setActiveTab("trucks")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all cursor-pointer ${activeTab === "trucks" ? "bg-[#1e3a8a] text-white shadow-md" : "text-slate-600 hover:bg-slate-200"
-            }`}
+          className={`p-6 rounded-2xl cursor-pointer border-2 transition-all flex items-center gap-4 ${activeTab === "trucks" ? "bg-blue-50 border-[#1e3a8a] shadow-md" : "bg-white border-slate-200 hover:border-slate-300"}`}
         >
-          <Truck className="w-4 h-4" />
-          <span>Trucks ({masterData.trucks.length})</span>
-        </button>
+          <div className={`p-3 rounded-xl ${activeTab === "trucks" ? "bg-[#1e3a8a] text-white" : "bg-slate-100 text-slate-500"}`}>
+            <Truck className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-slate-900">Trucks</h3>
+            <p className="text-xs text-slate-500 font-bold">{masterData.trucks.length} Active</p>
+          </div>
+        </div>
 
-        <button
-          onClick={() => setActiveTab("customers")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all cursor-pointer ${activeTab === "customers" ? "bg-[#1e3a8a] text-white shadow-md" : "text-slate-600 hover:bg-slate-200"
-            }`}
+        <div 
+          onClick={() => setActiveTab("access")}
+          className={`p-6 rounded-2xl cursor-pointer border-2 transition-all flex items-center gap-4 ${activeTab === "access" ? "bg-rose-50 border-rose-800 shadow-md" : "bg-white border-slate-200 hover:border-slate-300"}`}
         >
-          <Building2 className="w-4 h-4" />
-          <span>Customers ({masterData.customers.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("owners")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all cursor-pointer ${activeTab === "owners" ? "bg-[#1e3a8a] text-white shadow-md" : "text-slate-600 hover:bg-slate-200"
-            }`}
-        >
-          <Shield className="w-4 h-4" />
-          <span>Truck Owners ({masterData.owners.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("routes")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all cursor-pointer ${activeTab === "routes" ? "bg-[#1e3a8a] text-white shadow-md" : "text-slate-600 hover:bg-slate-200"
-            }`}
-        >
-          <MapPin className="w-4 h-4" />
-          <span>Routes ({masterData.routes.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("categories")}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all cursor-pointer ${activeTab === "categories" ? "bg-[#1e3a8a] text-white shadow-md" : "text-slate-600 hover:bg-slate-200"
-            }`}
-        >
-          <DollarSign className="w-4 h-4" />
-          <span>Expense Categories ({masterData.expenseCategories.length})</span>
-        </button>
+          <div className={`p-3 rounded-xl ${activeTab === "access" ? "bg-rose-800 text-white" : "bg-slate-100 text-slate-500"}`}>
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-slate-900">Access</h3>
+            <p className="text-xs text-slate-500 font-bold">Authorized Users</p>
+          </div>
+        </div>
       </div>
 
-      {/* TAB 1: DRIVERS */}
-      {activeTab === "drivers" && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <form onSubmit={handleAddDriver} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-            <h3 className="font-manrope font-extrabold text-slate-900 text-base">+ Add Driver</h3>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">DRIVER NAME *</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Dela Cruz, Juan"
-                value={newDriver}
-                onChange={(e) => setNewDriver(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#1e3a8a] outline-none font-bold text-slate-800"
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full py-3 bg-[#1e3a8a] text-white font-extrabold text-xs rounded-xl hover:bg-blue-900 transition-all cursor-pointer shadow-md"
-            >
-              Add Driver to Master Data
-            </button>
-          </form>
-
-          <div className="md:col-span-2 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
-            <h3 className="font-manrope font-extrabold text-slate-900 text-base border-b border-slate-100 pb-3">Master Driver List</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {masterData.drivers.map((d) => (
-                <div key={d} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
-                  <span className="font-bold text-slate-800 text-sm">{d}</span>
-                  <button
-                    onClick={() => handleDeleteDriver(d)}
-                    className="p-1 text-slate-300 hover:text-rose-600 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
+      {/* Main Content Area */}
+      <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
+        {/* Header bar with Search and Add Button */}
+        <div className="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="relative max-w-sm w-full">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input 
+              type="text" 
+              placeholder={`Search ${activeTab}...`} 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#1e3a8a]"
+            />
           </div>
+          <button
+            onClick={() => {
+              if (activeTab === "drivers") setIsDriverModalOpen(true);
+              if (activeTab === "helpers") setIsHelperModalOpen(true);
+              if (activeTab === "trucks") setIsTruckModalOpen(true);
+              if (activeTab === "access") setIsUserModalOpen(true);
+            }}
+            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#1e3a8a] text-white font-extrabold text-sm rounded-xl hover:bg-blue-900 transition-colors shadow-md shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add New {activeTab === "drivers" ? "Driver" : activeTab === "helpers" ? "Helper" : activeTab === "trucks" ? "Truck" : "User"}</span>
+          </button>
         </div>
-      )}
 
-      {/* TAB 2: HELPERS */}
-      {activeTab === "helpers" && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <form onSubmit={handleAddHelper} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-            <h3 className="font-manrope font-extrabold text-slate-900 text-base">+ Add Helper</h3>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">HELPER NAME *</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Gomez, Bryan"
-                value={newHelper}
-                onChange={(e) => setNewHelper(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#1e3a8a] outline-none font-bold text-slate-800"
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full py-3 bg-[#1e3a8a] text-white font-extrabold text-xs rounded-xl hover:bg-blue-900 transition-all cursor-pointer shadow-md"
-            >
-              Add Helper to Master Data
-            </button>
-          </form>
-
-          <div className="md:col-span-2 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
-            <h3 className="font-manrope font-extrabold text-slate-900 text-base border-b border-slate-100 pb-3">Master Helper List</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {masterData.helpers.map((h) => (
-                <div key={h} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
-                  <span className="font-bold text-slate-800 text-sm">{h}</span>
-                  <button
-                    onClick={() => handleDeleteHelper(h)}
-                    className="p-1 text-slate-300 hover:text-rose-600 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3: TRUCKS */}
-      {activeTab === "trucks" && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <form onSubmit={handleAddTruck} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-            <h3 className="font-manrope font-extrabold text-slate-900 text-base">+ Add Truck Unit</h3>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">TRUCK UNIT MODEL *</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. CANTER"
-                value={truckUnit}
-                onChange={(e) => setTruckUnit(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#1e3a8a] outline-none font-bold text-slate-800"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">PLATE NUMBER *</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. AAX-4163"
-                value={truckPlate}
-                onChange={(e) => setTruckPlate(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#1e3a8a] outline-none font-mono font-bold text-slate-800"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">TRUCK OWNER</label>
-              <input
-                type="text"
-                placeholder="e.g. ALK Trucking"
-                value={truckOwner}
-                onChange={(e) => setTruckOwner(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#1e3a8a] outline-none text-slate-800"
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full py-3 bg-[#1e3a8a] text-white font-extrabold text-xs rounded-xl hover:bg-blue-900 transition-all cursor-pointer shadow-md"
-            >
-              Add Truck Unit
-            </button>
-          </form>
-
-          <div className="md:col-span-2 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
-            <h3 className="font-manrope font-extrabold text-slate-900 text-base border-b border-slate-100 pb-3">Fleet Units List</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {masterData.trucks.map((t) => (
-                <div key={t.id} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
-                  <div>
-                    <p className="font-bold text-slate-900 text-sm">{t.unit}</p>
-                    <p className="font-mono text-xs text-blue-700 font-semibold">{t.plateNo}</p>
-                    <p className="text-[10px] text-slate-400">Owner: {t.owner}</p>
+        {/* List Grid */}
+        <div className="p-4 sm:p-6 bg-slate-50/50 min-h-[400px]">
+          
+          {/* DRIVERS */}
+          {activeTab === "drivers" && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {filteredDrivers.map(d => (
+                <div key={d} className="bg-white border border-slate-200 p-4 rounded-2xl flex items-center justify-between group hover:border-[#1e3a8a]/30 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-800 flex items-center justify-center font-black text-sm">
+                      {d.charAt(0)}
+                    </div>
+                    <span className="font-extrabold text-slate-800 text-sm">{d}</span>
                   </div>
-                  <button
-                    onClick={() => handleDeleteTruck(t.id)}
-                    className="p-1 text-slate-300 hover:text-rose-600 transition-colors"
+                  <button 
+                    onClick={() => handleArchiveDriver(d)}
+                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                    title="Archive Driver"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Archive className="w-4 h-4" />
                   </button>
                 </div>
               ))}
+              {filteredDrivers.length === 0 && (
+                <div className="col-span-full py-10 text-center text-slate-400 font-bold text-sm">No drivers found.</div>
+              )}
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* TAB 4: CUSTOMERS */}
-      {activeTab === "customers" && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <form onSubmit={handleAddCustomer} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-            <h3 className="font-manrope font-extrabold text-slate-900 text-base">+ Add Customer</h3>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">CUSTOMER / CLIENT NAME *</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. NEST-O"
-                value={newCustomer}
-                onChange={(e) => setNewCustomer(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#1e3a8a] outline-none font-bold text-slate-800"
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full py-3 bg-[#1e3a8a] text-white font-extrabold text-xs rounded-xl hover:bg-blue-900 transition-all cursor-pointer shadow-md"
-            >
-              Add Customer
-            </button>
-          </form>
-
-          <div className="md:col-span-2 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
-            <h3 className="font-manrope font-extrabold text-slate-900 text-base border-b border-slate-100 pb-3">Master Customer List</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {masterData.customers.map((c) => (
-                <div key={c} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
-                  <span className="font-bold text-slate-800 text-sm">{c}</span>
-                  <button
-                    onClick={() => handleDeleteCustomer(c)}
-                    className="p-1 text-slate-300 hover:text-rose-600 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 5: TRUCK OWNERS */}
-      {activeTab === "owners" && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <form onSubmit={handleAddOwner} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-            <h3 className="font-manrope font-extrabold text-slate-900 text-base">+ Add Truck Owner</h3>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">OWNER NAME / ENTITY *</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Mindanao Logistics"
-                value={newOwner}
-                onChange={(e) => setNewOwner(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#1e3a8a] outline-none font-bold text-slate-800"
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full py-3 bg-[#1e3a8a] text-white font-extrabold text-xs rounded-xl hover:bg-blue-900 transition-all cursor-pointer shadow-md"
-            >
-              Add Owner
-            </button>
-          </form>
-
-          <div className="md:col-span-2 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
-            <h3 className="font-manrope font-extrabold text-slate-900 text-base border-b border-slate-100 pb-3">Master Truck Owners</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {masterData.owners.map((o) => (
-                <div key={o} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
-                  <span className="font-bold text-slate-800 text-sm">{o}</span>
-                  <button
-                    onClick={() => handleDeleteOwner(o)}
-                    className="p-1 text-slate-300 hover:text-rose-600 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 6: ROUTES */}
-      {activeTab === "routes" && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <form onSubmit={handleAddRoute} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-            <h3 className="font-manrope font-extrabold text-slate-900 text-base">+ Add Route</h3>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">ORIGIN (POINT A) *</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. CDO"
-                value={routeOrigin}
-                onChange={(e) => setRouteOrigin(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#1e3a8a] outline-none font-bold text-slate-800"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">DESTINATION (POINT B) *</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. SURIGAO"
-                value={routeDest}
-                onChange={(e) => setRouteDest(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#1e3a8a] outline-none font-bold text-slate-800"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">DISTANCE (OPTIONAL)</label>
-              <input
-                type="text"
-                placeholder="e.g. 310 km"
-                value={routeDist}
-                onChange={(e) => setRouteDist(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#1e3a8a] outline-none text-slate-800"
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full py-3 bg-[#1e3a8a] text-white font-extrabold text-xs rounded-xl hover:bg-blue-900 transition-all cursor-pointer shadow-md"
-            >
-              Add Route
-            </button>
-          </form>
-
-          <div className="md:col-span-2 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
-            <h3 className="font-manrope font-extrabold text-slate-900 text-base border-b border-slate-100 pb-3">Master Routes List</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {masterData.routes.map((r) => (
-                <div key={r.id} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
-                  <div>
-                    <p className="font-extrabold text-slate-900 text-sm">{r.origin} → {r.destination}</p>
-                    <p className="text-xs text-slate-400 font-mono">Distance: {r.distance}</p>
+          {/* HELPERS */}
+          {activeTab === "helpers" && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {filteredHelpers.map(h => (
+                <div key={h} className="bg-white border border-slate-200 p-4 rounded-2xl flex items-center justify-between group hover:border-[#1e3a8a]/30 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-indigo-50 text-indigo-800 flex items-center justify-center font-black text-sm">
+                      {h.charAt(0)}
+                    </div>
+                    <span className="font-extrabold text-slate-800 text-sm">{h}</span>
                   </div>
-                  <button
-                    onClick={() => handleDeleteRoute(r.id)}
-                    className="p-1 text-slate-300 hover:text-rose-600 transition-colors"
+                  <button 
+                    onClick={() => handleArchiveHelper(h)}
+                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                    title="Archive Helper"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Archive className="w-4 h-4" />
                   </button>
                 </div>
               ))}
+              {filteredHelpers.length === 0 && (
+                <div className="col-span-full py-10 text-center text-slate-400 font-bold text-sm">No helpers found.</div>
+              )}
             </div>
+          )}
+
+          {/* TRUCKS */}
+          {activeTab === "trucks" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredTrucks.map(t => (
+                <div key={t.id} className="bg-white border border-slate-200 p-5 rounded-2xl group hover:border-[#1e3a8a]/30 transition-colors relative">
+                  <div className="absolute top-4 right-4">
+                    <button 
+                      onClick={() => handleArchiveTruck(t.id, t.plateNo)}
+                      className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                      title="Archive Truck"
+                    >
+                      <Archive className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-3 bg-slate-100 text-slate-700 rounded-xl">
+                      <Truck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-slate-900 text-lg uppercase tracking-tight">{t.plateNo}</h4>
+                      <p className="text-xs text-slate-500 font-bold">{t.unit}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Owner</span>
+                    <span className="text-xs font-extrabold text-[#1e3a8a] px-2 py-1 bg-blue-50 rounded-md">{t.owner}</span>
+                  </div>
+                </div>
+              ))}
+              {filteredTrucks.length === 0 && (
+                <div className="col-span-full py-10 text-center text-slate-400 font-bold text-sm">No trucks found.</div>
+              )}
+            </div>
+          )}
+
+          {/* ACCESS CONTROL */}
+          {activeTab === "access" && (
+            <div className="space-y-4">
+              {isAuthLoading ? (
+                <div className="py-10 text-center text-slate-400 text-sm font-bold">Loading users...</div>
+              ) : (
+                <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                  <table className="w-full text-left text-sm whitespace-nowrap">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="px-6 py-4 font-bold text-slate-700">Name</th>
+                        <th className="px-6 py-4 font-bold text-slate-700">Google Email</th>
+                        <th className="px-6 py-4 font-bold text-slate-700">Role</th>
+                        <th className="px-6 py-4 font-bold text-slate-700 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {filteredUsers.map((user) => (
+                        <tr key={user.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-6 py-4 font-extrabold text-slate-800">{user.name || "-"}</td>
+                          <td className="px-6 py-4 font-medium text-slate-600">{user.email}</td>
+                          <td className="px-6 py-4">
+                            <span className="px-2.5 py-1 rounded-md text-xs font-bold bg-blue-50 text-[#1e3a8a] border border-blue-100">
+                              {user.role}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              onClick={() => handleRevokeUser(user.id, user.email)}
+                              className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-2 rounded-lg transition-colors font-bold flex items-center gap-2 ml-auto"
+                            >
+                              <XCircle className="w-4 h-4" />
+                              <span className="text-xs">Revoke</span>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredUsers.length === 0 && (
+                        <tr>
+                          <td colSpan={4} className="px-6 py-10 text-center text-slate-400 font-bold">
+                            No authorized users found.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* MODALS */}
+      {/* Driver/Helper Modal */}
+      {(isDriverModalOpen || isHelperModalOpen) && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
+              <h2 className="font-extrabold text-slate-900">Add New {isDriverModalOpen ? "Driver" : "Helper"}</h2>
+            </div>
+            <form onSubmit={isDriverModalOpen ? handleAddDriver : handleAddHelper} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  placeholder="e.g. Dela Cruz, Juan"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="w-full px-4 py-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#1e3a8a] outline-none font-bold text-slate-800"
+                />
+              </div>
+              
+              <div className="bg-blue-50 p-3 rounded-xl flex gap-3 text-blue-900">
+                <AlertTriangle className="w-5 h-5 shrink-0 text-blue-700" />
+                <p className="text-xs font-medium leading-relaxed">
+                  Please use a consistent naming format (e.g. Last Name, First Name) to make reporting easier.
+                </p>
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsDriverModalOpen(false);
+                    setIsHelperModalOpen(false);
+                    setNewName("");
+                  }}
+                  className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 font-extrabold text-sm rounded-xl hover:bg-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-3 bg-[#1e3a8a] text-white font-extrabold text-sm rounded-xl hover:bg-blue-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                >
+                  {isSubmitting ? "Saving..." : "Save to Database"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* TAB 7: EXPENSE CATEGORIES */}
-      {activeTab === "categories" && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <form onSubmit={handleAddCategory} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-            <h3 className="font-manrope font-extrabold text-slate-900 text-base">+ Add Expense Category</h3>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">CATEGORY NAME *</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Parking Fee"
-                value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#1e3a8a] outline-none font-bold text-slate-800"
-              />
+      {/* Truck Modal */}
+      {isTruckModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
+              <h2 className="font-extrabold text-slate-900">Add New Truck</h2>
             </div>
-            <button
-              type="submit"
-              className="w-full py-3 bg-[#1e3a8a] text-white font-extrabold text-xs rounded-xl hover:bg-blue-900 transition-all cursor-pointer shadow-md"
-            >
-              Add Category
-            </button>
-          </form>
-
-          <div className="md:col-span-2 bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-3">
-            <h3 className="font-manrope font-extrabold text-slate-900 text-base border-b border-slate-100 pb-3">Pre-set Expense Categories</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {masterData.expenseCategories.map((cat) => (
-                <div key={cat} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
-                  <span className="font-bold text-slate-800 text-sm">{cat}</span>
-                  <button
-                    onClick={() => handleDeleteCategory(cat)}
-                    className="p-1 text-slate-300 hover:text-rose-600 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+            <form onSubmit={handleAddTruck} className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Plate Number *</label>
+                  <input
+                    type="text"
+                    required
+                    autoFocus
+                    placeholder="e.g. ABC-1234"
+                    value={truckPlate}
+                    onChange={(e) => setTruckPlate(e.target.value.toUpperCase())}
+                    className="w-full px-4 py-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#1e3a8a] outline-none font-black text-slate-800 uppercase"
+                  />
                 </div>
-              ))}
-            </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Truck Unit *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. CANTER"
+                    value={truckUnit}
+                    onChange={(e) => setTruckUnit(e.target.value.toUpperCase())}
+                    className="w-full px-4 py-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#1e3a8a] outline-none font-bold text-slate-800 uppercase"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Truck Owner *</label>
+                <select
+                  value={truckOwner}
+                  onChange={(e) => setTruckOwner(e.target.value)}
+                  className="w-full px-4 py-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#1e3a8a] outline-none font-bold text-slate-800 bg-white"
+                >
+                  <option value="ALK Trucking">ALK Trucking</option>
+                  <option value="Mindanao Logistics">Mindanao Logistics</option>
+                  <option value="Third Party">Third Party</option>
+                </select>
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsTruckModalOpen(false);
+                    setTruckPlate("");
+                    setTruckUnit("");
+                    setTruckOwner("ALK Trucking");
+                  }}
+                  className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 font-extrabold text-sm rounded-xl hover:bg-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-3 bg-[#1e3a8a] text-white font-extrabold text-sm rounded-xl hover:bg-blue-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                >
+                  {isSubmitting ? "Saving..." : "Save to Database"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
+      {/* User Modal */}
+      {isUserModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
+              <h2 className="font-extrabold text-slate-900 flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-rose-700" />
+                Authorize New Staff
+              </h2>
+            </div>
+            <form onSubmit={handleAddUser} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Google Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  autoFocus
+                  placeholder="e.g. employee@gmail.com"
+                  value={newAuthEmail}
+                  onChange={(e) => setNewAuthEmail(e.target.value.toLowerCase())}
+                  className="w-full px-4 py-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#1e3a8a] outline-none font-bold text-slate-800"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wider">Full Name (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. John Doe"
+                  value={newAuthName}
+                  onChange={(e) => setNewAuthName(e.target.value)}
+                  className="w-full px-4 py-3 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#1e3a8a] outline-none font-bold text-slate-800"
+                />
+              </div>
+              
+              <div className="bg-amber-50 p-3 rounded-xl flex gap-3 text-amber-900 mt-2">
+                <AlertTriangle className="w-5 h-5 shrink-0 text-amber-700" />
+                <p className="text-xs font-medium leading-relaxed">
+                  Only explicitly listed Google emails can bypass the security lockdown.
+                </p>
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsUserModalOpen(false);
+                    setNewAuthEmail("");
+                    setNewAuthName("");
+                  }}
+                  className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 font-extrabold text-sm rounded-xl hover:bg-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-3 bg-[#1e3a8a] text-white font-extrabold text-sm rounded-xl hover:bg-blue-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                >
+                  {isSubmitting ? "Granting..." : "Grant Access"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </PageShell>
   );
 }

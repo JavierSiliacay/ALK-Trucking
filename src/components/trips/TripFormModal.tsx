@@ -15,7 +15,11 @@ interface TripFormModalProps {
 const EXPENSE_CATEGORIES = DEFAULT_EXPENSE_CATEGORIES;
 
 export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: TripFormModalProps) {
-  const { masterData } = useTrips();
+  const { masterData, trips } = useTrips();
+
+  const uniqueCustomers = Array.from(new Set(trips.map((t) => t.customerName).filter(Boolean)));
+  const uniqueDestinations = Array.from(new Set(trips.map((t) => t.destination).filter(Boolean)));
+  const uniqueOrigins = Array.from(new Set(trips.map((t) => t.origin).filter(Boolean)));
 
   const [seqNo, setSeqNo] = useState("");
   const [dateOfTravel, setDateOfTravel] = useState(new Date().toISOString().split("T")[0]);
@@ -109,7 +113,7 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
     const newRow: ExpenseItem = {
       id: `exp_${Date.now()}`,
       category: EXPENSE_CATEGORIES[0],
-      dateRequest: new Date().toISOString().split("T")[0],
+      dateRequest: dateOfTravel,
       rsNo: "",
       description: "",
       amount: 0,
@@ -137,6 +141,20 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const d = driver.trim().toLowerCase();
+    const h1 = helper1.trim().toLowerCase();
+    const h2 = helper2.trim().toLowerCase();
+
+    if (h1 && h2 && h1 === h2) {
+      alert("Helper 1 and Helper 2 cannot be the same person.");
+      return;
+    }
+    if (d && (d === h1 || d === h2)) {
+      alert("The Assigned Driver cannot also be assigned as a Helper.");
+      return;
+    }
+
     setIsSaving(true);
     try {
       const payload = {
@@ -224,7 +242,7 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
             <div className="space-y-3">
               <div className="space-y-1">
                 <label className="text-gray-700 font-semibold text-xs uppercase block">
-                  Date of Travel <span className="text-red-500">*</span>
+                  Date Request <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="date"
@@ -256,39 +274,89 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
                 <input
                   type="text"
                   required
+                  list="customer-list"
                   placeholder="e.g. WEST-O"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
                 />
+                <datalist id="customer-list">
+                  {uniqueCustomers.map((c) => <option key={c} value={c} />)}
+                </datalist>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <label className="text-gray-700 font-semibold text-xs uppercase block">
-                    Trip Rate (₱) <span className="text-red-500">*</span>
-                  </label>
-                  <CurrencyInput
-                    required
-                    placeholder="20,000"
-                    value={rate}
-                    onChange={(val) => setRate(val)}
-                    className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-sm font-mono font-bold text-emerald-800 focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-gray-700 font-semibold text-xs uppercase block">
-                    Destination Route <span className="text-red-500">*</span>
+                    Gate Pass # <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     required
+                    placeholder="e.g. 015975"
+                    value={gatePassNo}
+                    onChange={(e) => setGatePassNo(e.target.value)}
+                    className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-sm font-mono font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-gray-700 font-semibold text-xs uppercase block">
+                    Gate Pass Date <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={gatePassDate}
+                    onChange={(e) => setGatePassDate(e.target.value)}
+                    className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-sm text-gray-900 font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-gray-700 font-semibold text-xs uppercase block text-center">
+                  Destination Route <span className="text-red-500">*</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    required
+                    list="origin-list"
+                    placeholder="e.g. CDO"
+                    value={origin}
+                    onChange={(e) => setOrigin(e.target.value)}
+                    className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-sm font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none text-center"
+                  />
+                  <span className="text-gray-400 font-bold">→</span>
+                  <input
+                    type="text"
+                    required
+                    list="destination-list"
                     placeholder="e.g. SURIGAO"
                     value={destination}
                     onChange={(e) => setDestination(e.target.value)}
-                    className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-sm font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                    className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-sm font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none text-center"
                   />
                 </div>
+                <datalist id="origin-list">
+                  {uniqueOrigins.map((o) => <option key={o} value={o} />)}
+                </datalist>
+                <datalist id="destination-list">
+                  {uniqueDestinations.map((d) => <option key={d} value={d} />)}
+                </datalist>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-gray-700 font-semibold text-xs uppercase block">
+                  Trip Rate (₱) <span className="text-red-500">*</span>
+                </label>
+                <CurrencyInput
+                  required
+                  placeholder="20,000"
+                  value={rate}
+                  onChange={(val) => setRate(val)}
+                  className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-sm font-mono font-bold text-emerald-800 focus:ring-2 focus:ring-blue-500 outline-none"
+                />
               </div>
             </div>
 
@@ -341,30 +409,32 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
                 />
               </div>
 
+              <div className="space-y-1">
+                <label className="text-gray-700 font-semibold text-xs uppercase block">
+                  Assigned Driver <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  list="driver-list"
+                  placeholder="e.g. ARA, R."
+                  value={driver}
+                  onChange={(e) => setDriver(e.target.value)}
+                  className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+                <datalist id="driver-list">
+                  {masterData.drivers.map((d) => <option key={d} value={d} />)}
+                </datalist>
+              </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <label className="text-gray-700 font-semibold text-xs uppercase block">
-                    Assigned Driver <span className="text-red-500">*</span>
+                    Helper 1 <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     required
-                    list="driver-list"
-                    placeholder="e.g. ARA, R."
-                    value={driver}
-                    onChange={(e) => setDriver(e.target.value)}
-                    className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-sm font-semibold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
-                  />
-                  <datalist id="driver-list">
-                    {masterData.drivers.map((d) => <option key={d} value={d} />)}
-                  </datalist>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-gray-700 font-semibold text-xs uppercase block">
-                    Assigned Helper
-                  </label>
-                  <input
-                    type="text"
                     list="helper-list"
                     placeholder="e.g. Gomez, B."
                     value={helper1}
@@ -374,6 +444,20 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
                   <datalist id="helper-list">
                     {masterData.helpers.map((h) => <option key={h} value={h} />)}
                   </datalist>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-gray-700 font-semibold text-xs uppercase block">
+                    Helper 2 <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    list="helper-list"
+                    placeholder="e.g. Cruz, J."
+                    value={helper2}
+                    onChange={(e) => setHelper2(e.target.value)}
+                    className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                  />
                 </div>
               </div>
             </div>
@@ -409,7 +493,19 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
             {/* Dynamic Items Table Rows (Identical to Autoworx System) */}
             <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
               {expenses.map((exp, index) => (
-                <div key={exp.id || index} className="flex gap-2 items-center group">
+                <div 
+                  key={exp.id || index} 
+                  className="flex gap-2 items-center group"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddExpenseRow();
+                      setTimeout(() => {
+                        document.getElementById(`expense-desc-${expenses.length}`)?.focus();
+                      }, 50);
+                    }
+                  }}
+                >
                   
                   {/* Category Dropdown or Input */}
                   <div className="w-[160px] shrink-0 relative flex items-center">
@@ -449,6 +545,7 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
                   {/* Description Input */}
                   <div className="flex-1">
                     <input
+                      id={`expense-desc-${index}`}
                       type="text"
                       placeholder="Expense item description"
                       value={exp.description}
@@ -465,6 +562,17 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
                       value={exp.amount === 0 ? "" : exp.amount}
                       onChange={(val) => handleExpenseChange(index, "amount", val === "" ? 0 : val)}
                       className="w-full h-9 pl-6 pr-2 bg-white border border-gray-300 rounded text-xs font-mono font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none text-right"
+                    />
+                  </div>
+
+                  {/* Remarks Input */}
+                  <div className="flex-1 max-w-[150px]">
+                    <input
+                      type="text"
+                      placeholder="Remarks..."
+                      value={exp.remarks || ""}
+                      onChange={(e) => handleExpenseChange(index, "remarks", e.target.value)}
+                      className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-xs text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
                     />
                   </div>
 

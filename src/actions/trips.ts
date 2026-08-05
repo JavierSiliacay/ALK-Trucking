@@ -47,29 +47,29 @@ export async function createTrip(data: any) {
   try {
     const { expenses: expensesData, ...tripData } = data;
 
-    // Use a transaction to ensure both trip and expenses are created together
-    await db.transaction(async (tx) => {
-      // 1. Insert Trip
-      const [newTrip] = await tx.insert(trips).values({
-        ...tripData,
-        rate: tripData.rate.toString(), // Convert to string for decimal column
-      }).returning();
+    // 1. Insert Trip
+    const [newTrip] = await db.insert(trips).values({
+      ...tripData,
+      dateOfTravel: new Date(tripData.dateOfTravel),
+      gatePassDate: tripData.gatePassDate ? new Date(tripData.gatePassDate) : null,
+      status: tripData.status || "Active",
+      rate: tripData.rate.toString(), // Convert to string for decimal column
+    }).returning();
 
-      // 2. Insert Expenses if any
-      if (expensesData && expensesData.length > 0) {
-        const expensesToInsert = expensesData.map((exp: any) => ({
-          tripId: newTrip.id,
-          category: exp.category,
-          dateRequest: exp.dateRequest ? new Date(exp.dateRequest) : null,
-          rsNo: exp.rsNo || "",
-          description: exp.description || "",
-          amount: exp.amount.toString(),
-          remarks: exp.remarks || "",
-        }));
+    // 2. Insert Expenses if any
+    if (expensesData && expensesData.length > 0) {
+      const expensesToInsert = expensesData.map((exp: any) => ({
+        tripId: newTrip.id,
+        category: exp.category,
+        dateRequest: exp.dateRequest ? new Date(exp.dateRequest) : null,
+        rsNo: exp.rsNo || "",
+        description: exp.description || "",
+        amount: exp.amount.toString(),
+        remarks: exp.remarks || "",
+      }));
 
-        await tx.insert(expenses).values(expensesToInsert);
-      }
-    });
+      await db.insert(expenses).values(expensesToInsert);
+    }
 
     revalidatePath("/admin/trips");
     revalidatePath("/admin/reports");
@@ -83,32 +83,33 @@ export async function createTrip(data: any) {
 
 export async function updateTrip(id: string, data: any) {
   try {
-    const { expenses: expensesData, ...tripData } = data;
+    const { expenses: expensesData, id: _id, createdAt: _createdAt, ...tripData } = data;
 
-    await db.transaction(async (tx) => {
-      // 1. Update Trip
-      await tx.update(trips).set({
-        ...tripData,
-        rate: tripData.rate.toString(),
-      }).where(eq(trips.id, id));
+    // 1. Update Trip
+    await db.update(trips).set({
+      ...tripData,
+      dateOfTravel: new Date(tripData.dateOfTravel),
+      gatePassDate: tripData.gatePassDate ? new Date(tripData.gatePassDate) : null,
+      completedAt: tripData.completedAt ? new Date(tripData.completedAt) : null,
+      rate: tripData.rate.toString(),
+    }).where(eq(trips.id, id));
 
-      // 2. Sync Expenses (Delete old ones and insert new ones to keep it simple)
-      await tx.delete(expenses).where(eq(expenses.tripId, id));
+    // 2. Sync Expenses (Delete old ones and insert new ones to keep it simple)
+    await db.delete(expenses).where(eq(expenses.tripId, id));
 
-      if (expensesData && expensesData.length > 0) {
-        const expensesToInsert = expensesData.map((exp: any) => ({
-          tripId: id,
-          category: exp.category,
-          dateRequest: exp.dateRequest ? new Date(exp.dateRequest) : null,
-          rsNo: exp.rsNo || "",
-          description: exp.description || "",
-          amount: exp.amount.toString(),
-          remarks: exp.remarks || "",
-        }));
+    if (expensesData && expensesData.length > 0) {
+      const expensesToInsert = expensesData.map((exp: any) => ({
+        tripId: id,
+        category: exp.category,
+        dateRequest: exp.dateRequest ? new Date(exp.dateRequest) : null,
+        rsNo: exp.rsNo || "",
+        description: exp.description || "",
+        amount: exp.amount.toString(),
+        remarks: exp.remarks || "",
+      }));
 
-        await tx.insert(expenses).values(expensesToInsert);
-      }
-    });
+      await db.insert(expenses).values(expensesToInsert);
+    }
 
     revalidatePath("/admin/trips");
     revalidatePath("/admin/reports");
@@ -151,5 +152,24 @@ export async function completeTrip(id: string) {
   } catch (error) {
     console.error("Failed to complete trip:", error);
     return { success: false, error: "Failed to complete trip" };
+  }
+}
+
+export async function uncompleteTrip(id: string) {
+  try {
+    await db.update(trips)
+      .set({
+        status: "Active",
+        completedAt: null
+      })
+      .where(eq(trips.id, id));
+
+    revalidatePath("/admin/trips");
+    revalidatePath("/admin/reports");
+    revalidatePath("/admin/payroll");
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to revert trip:", error);
+    return { success: false, error: "Failed to revert trip" };
   }
 }

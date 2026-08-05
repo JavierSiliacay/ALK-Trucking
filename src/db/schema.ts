@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, varchar, decimal, uuid, index } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, varchar, decimal, uuid, index, boolean } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 export const trips = pgTable("trips", {
@@ -51,3 +51,34 @@ export const expensesRelations = relations(expenses, ({ one }) => ({
     references: [trips.id],
   }),
 }));
+
+export const drivers = pgTable("drivers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull().unique(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const helpers = pgTable("helpers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull().unique(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const trucks = pgTable("trucks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  unit: varchar("unit", { length: 255 }).notNull(),
+  plateNo: varchar("plate_no", { length: 255 }).notNull().unique(),
+  owner: varchar("owner", { length: 255 }).notNull().default("ALK Trucking"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  name: varchar("name", { length: 255 }),
+  role: varchar("role", { length: 50 }).notNull().default("ADMIN"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
