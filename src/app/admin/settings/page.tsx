@@ -8,6 +8,10 @@ import { addDriver, archiveDriver, addHelper, archiveHelper, addTruck, archiveTr
 import { getAuthorizedUsers, addAuthorizedUser, revokeUserAccess } from "@/actions/users";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
+import wingvanImg from "../../../../public/wingvan.png";
+import canterImg from "../../../../public/canter6wheelers.png";
+import forwardImg from "../../../../public/forward.png";
 
 export default function SettingsPage() {
   const { masterData, isLoaded } = useTrips();
@@ -289,7 +293,14 @@ export default function SettingsPage() {
           {/* TRUCKS */}
           {activeTab === "trucks" && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredTrucks.map(t => (
+              {filteredTrucks.map(t => {
+                const normalizedUnit = t.unit.toLowerCase();
+                let iconSrc = null;
+                if (normalizedUnit.includes("wingvan")) iconSrc = wingvanImg;
+                else if (normalizedUnit.includes("canter")) iconSrc = canterImg;
+                else if (normalizedUnit.includes("forward")) iconSrc = forwardImg;
+
+                return (
                 <div key={t.id} className="bg-white border border-slate-200 p-5 rounded-2xl group hover:border-[#1e3a8a]/30 transition-colors relative">
                   <div className="absolute top-4 right-4">
                     <button 
@@ -301,9 +312,15 @@ export default function SettingsPage() {
                     </button>
                   </div>
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="p-3 bg-slate-100 text-slate-700 rounded-xl">
-                      <Truck className="w-5 h-5" />
-                    </div>
+                    {iconSrc ? (
+                      <div className="w-12 h-12 relative rounded-xl overflow-hidden bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0 shadow-sm p-1">
+                        <Image src={iconSrc} alt={t.unit} fill sizes="48px" className="object-contain p-1" />
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-slate-100 text-slate-700 rounded-xl">
+                        <Truck className="w-5 h-5" />
+                      </div>
+                    )}
                     <div>
                       <h4 className="font-black text-slate-900 text-lg uppercase tracking-tight">{t.plateNo}</h4>
                       <p className="text-xs text-slate-500 font-bold">{t.unit}</p>
@@ -314,7 +331,7 @@ export default function SettingsPage() {
                     <span className="text-xs font-extrabold text-[#1e3a8a] px-2 py-1 bg-blue-50 rounded-md">{t.owner}</span>
                   </div>
                 </div>
-              ))}
+              )})}
               {filteredTrucks.length === 0 && (
                 <div className="col-span-full py-10 text-center text-slate-400 font-bold text-sm">No trucks found.</div>
               )}
