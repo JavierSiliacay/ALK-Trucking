@@ -206,14 +206,7 @@ export default function DigitalPaperForm({ trip, onClose }: DigitalPaperFormProp
                 )}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4 text-[10px] pt-6 border-t border-slate-300">
-              <div className="border-t border-slate-900 pt-1 text-center font-bold text-slate-700 uppercase">
-                PREPARED BY: VIRGIE AGBONG
-              </div>
-              <div className="border-t border-slate-900 pt-1 text-center font-bold text-slate-700 uppercase">
-                APPROVED BY (MANAGEMENT)
-              </div>
-            </div>
+
           </div>
 
           {/* Financial Summary Box */}

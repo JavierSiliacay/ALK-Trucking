@@ -15,11 +15,22 @@ interface NavItem {
   name: string;
   href: string;
   icon: string;
+  children?: Omit<NavItem, 'children'>[];
 }
 
 const navigation: NavItem[] = [
   { name: "Dashboard", href: "/admin", icon: "dashboard" },
   { name: "Trips", href: "/admin/trips", icon: "local_shipping" },
+  { 
+    name: "Trucks", 
+    href: "/admin/trucks-folder", 
+    icon: "directions_car",
+    children: [
+      { name: "Fleet Performance", href: "/admin/trucks", icon: "monitoring" },
+      { name: "Maintenance", href: "/admin/maintenance", icon: "build" },
+    ]
+  },
+  { name: "Inventory", href: "/admin/inventory", icon: "inventory_2" },
   { name: "Reports", href: "/admin/reports", icon: "assessment" },
   { name: "Payroll", href: "/admin/payroll", icon: "payments" },
   { name: "Settings", href: "/admin/settings", icon: "settings" },
@@ -33,12 +44,36 @@ export default function Sidebar() {
   const [mounted, setMounted] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false);
+  
+  // Track which folders are open (by item name)
+  // By default, open the folder if we are currently inside it
+  const [openFolders, setOpenFolders] = useState<string[]>(() => {
+    const initialOpen: string[] = [];
+    navigation.forEach(item => {
+      if (item.children?.some(child => pathname.startsWith(child.href))) {
+        initialOpen.push(item.name);
+      }
+    });
+    return initialOpen;
+  });
 
   useEffect(() => { setMounted(true); }, []);
 
   const isActive = (item: NavItem) => {
     if (item.href === "/admin") return pathname === "/admin";
+    if (item.children) {
+      return item.children.some(child => pathname.startsWith(child.href));
+    }
     return pathname.startsWith(item.href);
+  };
+
+  const toggleFolder = (name: string) => {
+    if (isCollapsed) {
+      setIsCollapsed(false);
+      setOpenFolders(prev => prev.includes(name) ? prev : [...prev, name]);
+    } else {
+      setOpenFolders(prev => prev.includes(name) ? prev.filter(f => f !== name) : [...prev, name]);
+    }
   };
 
   return (
@@ -68,16 +103,65 @@ export default function Sidebar() {
           </div>
           {!isCollapsed && (
             <div className="overflow-hidden">
-              <h1 className="font-extrabold text-white text-sm leading-tight">Fleet Manager</h1>
+              <h1 className="font-extrabold text-white text-sm leading-tight">Fleet Management</h1>
               <p className="text-[10px] text-blue-300/80 font-medium">ALK Trucking Services</p>
             </div>
           )}
         </div>
 
         {/* 4 Main Nav Items */}
-        <nav className="flex-1 space-y-1 px-2">
+        <nav className="flex-1 space-y-1 px-2 overflow-y-auto custom-scrollbar">
           {navigation.map((item) => {
             const active = isActive(item);
+            const isOpen = openFolders.includes(item.name);
+            
+            if (item.children) {
+              return (
+                <div key={item.name} className="flex flex-col">
+                  <button
+                    onClick={() => toggleFolder(item.name)}
+                    className={`flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-xs font-bold transition-all duration-200 w-full ${
+                      active
+                        ? "bg-[#002d62]/50 text-white border border-blue-400/10"
+                        : "text-slate-300 hover:text-white hover:bg-white/10"
+                    } ${isCollapsed ? "justify-center px-0" : ""}`}
+                    title={isCollapsed ? item.name : undefined}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-[20px] shrink-0">{item.icon}</span>
+                      {!isCollapsed && <span className="whitespace-nowrap">{item.name}</span>}
+                    </div>
+                    {!isCollapsed && (
+                      <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`} />
+                    )}
+                  </button>
+                  
+                  {/* Children Items */}
+                  {!isCollapsed && isOpen && (
+                    <div className="mt-1 ml-4 pl-3 border-l border-white/10 space-y-1 flex flex-col">
+                      {item.children.map(child => {
+                        const childActive = pathname.startsWith(child.href);
+                        return (
+                          <Link
+                            key={child.name}
+                            href={child.href}
+                            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-[11px] font-bold transition-all duration-200 ${
+                              childActive
+                                ? "bg-[#002d62] text-white shadow-sm border border-blue-400/20"
+                                : "text-slate-400 hover:text-white hover:bg-white/10"
+                            }`}
+                          >
+                            <span className="material-symbols-outlined text-[16px] shrink-0">{child.icon}</span>
+                            <span className="whitespace-nowrap">{child.name}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             return (
               <Link
                 key={item.name}

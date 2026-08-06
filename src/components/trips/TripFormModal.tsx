@@ -255,7 +255,7 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
 
               <div className="space-y-1">
                 <label className="text-gray-700 font-semibold text-xs uppercase block">
-                  Trip / PR Sequence # <span className="text-red-500">*</span>
+                  Sequence # <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"

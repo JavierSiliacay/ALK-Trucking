@@ -82,3 +82,43 @@ export const users = pgTable("users", {
   role: varchar("role", { length: 50 }).notNull().default("ADMIN"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const inventoryItems = pgTable("inventory_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull().unique(),
+  unit: varchar("unit", { length: 50 }).notNull(),
+  currentStock: decimal("current_stock", { precision: 12, scale: 2 }).notNull().default("0"),
+  averageUnitCost: decimal("average_unit_cost", { precision: 12, scale: 2 }).notNull().default("0"),
+  isLocked: boolean("is_locked").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const inventoryTransactions = pgTable("inventory_transactions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  itemId: uuid("item_id")
+    .notNull()
+    .references(() => inventoryItems.id, { onDelete: "cascade" }),
+  type: varchar("type", { length: 20 }).notNull(), // "STOCK-IN" or "STOCK-OUT"
+  quantity: decimal("quantity", { precision: 12, scale: 2 }).notNull(),
+  unitCost: decimal("unit_cost", { precision: 12, scale: 2 }).notNull().default("0"),
+  totalCost: decimal("total_cost", { precision: 12, scale: 2 }).notNull().default("0"),
+  truckId: uuid("truck_id").references(() => trucks.id, { onDelete: "set null" }),
+  remarks: text("remarks"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const inventoryItemsRelations = relations(inventoryItems, ({ many }) => ({
+  transactions: many(inventoryTransactions),
+}));
+
+export const inventoryTransactionsRelations = relations(inventoryTransactions, ({ one }) => ({
+  item: one(inventoryItems, {
+    fields: [inventoryTransactions.itemId],
+    references: [inventoryItems.id],
+  }),
+  truck: one(trucks, {
+    fields: [inventoryTransactions.truckId],
+    references: [trucks.id],
+  }),
+}));

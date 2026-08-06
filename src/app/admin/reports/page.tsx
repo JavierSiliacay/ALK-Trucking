@@ -8,7 +8,8 @@ import {
 import { useTrips, calculateTripTotals, Trip } from "@/lib/trips-store";
 import TripInspectorModal from "@/components/trips/TripInspectorModal";
 import DigitalPaperForm from "@/components/trips/DigitalPaperForm";
-import { X, Truck, Calendar, MapPin, CreditCard, DollarSign } from "lucide-react";
+import { X, Truck, Calendar, MapPin, CreditCard, DollarSign, PackageOpen } from "lucide-react";
+import { getAllStockOuts } from "@/actions/inventory";
 
 type ReportPeriod = "daily" | "weekly" | "monthly" | "yearly" | "overall" | "custom";
 type ViewMode = "detailed" | "summary";
@@ -19,6 +20,7 @@ const OVERHEAD_CATEGORY_DESCRIPTIONS: Record<string, string> = {
   "Driver Wages": "DRIVER RATE",
   "Helper Wages": "HELPER 1, HELPER 2, AND STRIPPER RATES",
   "Maintenance": "TRUCK REPAIRS AND MAINTENANCE",
+  "Inventory Supply": "WAREHOUSE / INVENTORY STOCK-OUTS",
   "Other / Misc": "ALLOWANCES, CHARGE, STICKER, SOP, TOLLS & MISCELLANEOUS"
 };
 
@@ -45,11 +47,17 @@ export default function ReportsPage() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "completed">("all");
   const [showFinancials, setShowFinancials] = useState<boolean>(true);
+  const [stockOuts, setStockOuts] = useState<any[]>([]);
+
   // Stable Audit Number to prevent SSR hydration mismatch
   const auditNo = "AUD-600383";
 
   // Available Years
   const availableYears = [2024, 2025, 2026, 2027];
+
+  React.useEffect(() => {
+    getAllStockOuts().then(data => setStockOuts(data));
+  }, []);
 
   const getFilteredTrips = (): Trip[] => {
     const tokens = searchQuery.toLowerCase().trim().split(/\s+/).filter(Boolean);
@@ -74,7 +82,7 @@ export default function ReportsPage() {
           t.destination || "",
           t.gatePassNo || "",
           t.status || "",
-          `₱${Number(t.rate || 0).toLocaleString()}`,
+          `₱${Number(t.rate || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`,
           t.expenses.map((e) => `${e.category} ${e.description} ${e.remarks} ₱${e.amount}`).join(" ")
         ].join(" ").toLowerCase();
 
@@ -106,6 +114,33 @@ export default function ReportsPage() {
   };
 
   const reportTrips = getFilteredTrips();
+
+  const getFilteredStockOuts = () => {
+    return stockOuts.filter(tx => {
+      const txDateStr = new Date(tx.createdAt).toISOString().split("T")[0];
+      const txDate = new Date(tx.createdAt);
+
+      if (filterPeriod === "daily") {
+        return txDateStr === selectedDay;
+      }
+      if (filterPeriod === "monthly") {
+        return txDate.getMonth() === selectedMonth && txDate.getFullYear() === selectedYear;
+      }
+      if (filterPeriod === "yearly") {
+        return txDate.getFullYear() === selectedYear;
+      }
+      if (filterPeriod === "overall") {
+        return true; 
+      }
+      if (filterPeriod === "custom") {
+        if (!customStartDate || !customEndDate) return true;
+        return txDateStr >= customStartDate && txDateStr <= customEndDate;
+      }
+      return true;
+    });
+  };
+
+  const reportStockOuts = getFilteredStockOuts();
 
   // Helper to extract itemized expense breakdown for each trip row
   const getTripExpenseBreakdown = (t: Trip) => {
@@ -148,11 +183,15 @@ export default function ReportsPage() {
       acc.misc += b.misc;
       acc.total += b.total;
       acc.revenue += revenue;
-      acc.profit += (revenue - b.total);
       return acc;
     },
-    { fuel: 0, driverWages: 0, helperWages: 0, maintenance: 0, misc: 0, total: 0, revenue: 0, profit: 0 }
+    { fuel: 0, driverWages: 0, helperWages: 0, maintenance: 0, misc: 0, total: 0, revenue: 0, profit: 0, inventorySupply: 0 }
   );
+
+  const inventoryTotalCost = reportStockOuts.reduce((sum, tx) => sum + Number(tx.totalCost), 0);
+  totals.inventorySupply = inventoryTotalCost;
+  totals.total += inventoryTotalCost;
+  totals.profit = totals.revenue - totals.total;
 
   // Overhead Category Summary Computations (Autoworx System Style)
   const overheadCategorySummaries = useMemo(() => {
@@ -161,6 +200,7 @@ export default function ReportsPage() {
       { name: "Driver Wages", amount: totals.driverWages, desc: OVERHEAD_CATEGORY_DESCRIPTIONS["Driver Wages"] },
       { name: "Helper Wages", amount: totals.helperWages, desc: OVERHEAD_CATEGORY_DESCRIPTIONS["Helper Wages"] },
       { name: "Maintenance", amount: totals.maintenance, desc: OVERHEAD_CATEGORY_DESCRIPTIONS["Maintenance"] },
+      { name: "Inventory Supply", amount: totals.inventorySupply, desc: OVERHEAD_CATEGORY_DESCRIPTIONS["Inventory Supply"] },
       { name: "Other / Misc", amount: totals.misc, desc: OVERHEAD_CATEGORY_DESCRIPTIONS["Other / Misc"] },
     ];
 
@@ -176,7 +216,8 @@ export default function ReportsPage() {
 
     const categoryKey = selectedOverheadCategory.toLowerCase();
     const result: Array<{
-      trip: Trip;
+      trip?: Trip;
+      inventoryTx?: any;
       categoryName: string;
       itemDescription: string;
       amount: number;
@@ -216,6 +257,18 @@ export default function ReportsPage() {
       });
     });
 
+    // Also include inventory stock-outs if category is Total Expenses or Inventory Supply
+    if (categoryKey.includes("total") || categoryKey === "total expenses" || categoryKey === "inventory supply") {
+      reportStockOuts.forEach((tx) => {
+        result.push({
+          inventoryTx: tx,
+          categoryName: "Inventory Supply",
+          itemDescription: `${tx.quantity} ${tx.item?.unit} ${tx.item?.name} (${tx.remarks || "No remarks"})`,
+          amount: Number(tx.totalCost) || 0,
+        });
+      });
+    }
+
     return result;
   }, [reportTrips, selectedOverheadCategory]);
 
@@ -246,7 +299,7 @@ export default function ReportsPage() {
     }
     const headers = [
       "DATE REQ.",
-      "TRIP #",
+      "SEQUENCE #",
       "EXPENSE DESCRIPTION / ITEMS",
       "VEHICLE DETAILS",
       "DRIVER & CREW",
@@ -257,6 +310,7 @@ export default function ReportsPage() {
       "DRIVER WAGES (PHP)",
       "HELPER WAGES (PHP)",
       "MAINTENANCE (PHP)",
+      "INVENTORY SUPPLY (PHP)",
       "OTHER / MISC (PHP)",
       ...(showFinancials ? ["TRIP REVENUE (PHP)"] : []),
       "TOTAL DISBURSED (PHP)",
@@ -281,6 +335,7 @@ export default function ReportsPage() {
         b.driverWages,
         b.helperWages,
         b.maintenance,
+        0, // Inventory supply is not tied to a single trip row in this structure
         b.misc,
         ...(showFinancials ? [revenue] : []),
         b.total,
@@ -301,6 +356,7 @@ export default function ReportsPage() {
       totals.driverWages,
       totals.helperWages,
       totals.maintenance,
+      totals.inventorySupply,
       totals.misc,
       ...(showFinancials ? [totals.revenue] : []),
       totals.total,
@@ -585,7 +641,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Bento Expense Summary Cards (NO-PRINT) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 no-print">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 no-print">
         <div 
           onClick={() => setSelectedOverheadCategory("Total Expenses")}
           className="bg-white border border-[#c4c6d1] p-4.5 rounded-xl flex flex-col justify-between card-shadow cursor-pointer hover:bg-slate-50 transition-colors group"
@@ -595,7 +651,20 @@ export default function ReportsPage() {
           </div>
           <div className="mt-3">
             <span className="text-[#43474f] font-bold text-xs uppercase tracking-wide group-hover:text-[#00193c] transition-colors">Total Expenses</span>
-            <h3 className="font-extrabold text-2xl text-rose-700 mt-0.5 font-mono">₱{totals.total.toLocaleString()}.00</h3>
+            <h3 className="font-extrabold text-2xl text-rose-700 mt-0.5 font-mono">₱{totals.total.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</h3>
+          </div>
+        </div>
+
+        <div 
+          onClick={() => setSelectedOverheadCategory("Inventory Supply")}
+          className="bg-white border border-[#c4c6d1] p-4.5 rounded-xl flex flex-col justify-between card-shadow cursor-pointer hover:bg-slate-50 transition-colors group"
+        >
+          <div className="flex justify-between items-start">
+            <span className="material-symbols-outlined text-teal-700 text-[20px] group-hover:scale-110 transition-transform">inventory_2</span>
+          </div>
+          <div className="mt-3">
+            <span className="text-[#43474f] font-bold text-xs uppercase tracking-wide group-hover:text-[#00193c] transition-colors">Inventory Supply</span>
+            <h3 className="font-extrabold text-2xl text-teal-800 mt-0.5 font-mono">₱{totals.inventorySupply.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</h3>
           </div>
         </div>
 
@@ -608,7 +677,7 @@ export default function ReportsPage() {
           </div>
           <div className="mt-3">
             <span className="text-[#43474f] font-bold text-xs uppercase tracking-wide group-hover:text-[#00193c] transition-colors">Fuel Costs</span>
-            <h3 className="font-extrabold text-2xl text-[#00193c] mt-0.5 font-mono">₱{totals.fuel.toLocaleString()}.00</h3>
+            <h3 className="font-extrabold text-2xl text-[#00193c] mt-0.5 font-mono">₱{totals.fuel.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</h3>
           </div>
         </div>
 
@@ -622,7 +691,7 @@ export default function ReportsPage() {
           <div className="mt-3">
             <span className="text-[#43474f] font-bold text-xs uppercase tracking-wide group-hover:text-[#00193c] transition-colors">Allowances</span>
             <h3 className="font-extrabold text-2xl text-amber-900 mt-0.5 font-mono">
-              ₱{(totals.driverWages + totals.helperWages).toLocaleString()}.00
+              ₱{(totals.driverWages + totals.helperWages).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
             </h3>
           </div>
         </div>
@@ -637,7 +706,7 @@ export default function ReportsPage() {
           <div className="mt-3">
             <span className="text-[#43474f] font-bold text-xs uppercase tracking-wide group-hover:text-[#00193c] transition-colors">Maintenance & Misc</span>
             <h3 className="font-extrabold text-2xl text-indigo-950 mt-0.5 font-mono">
-              ₱{(totals.maintenance + totals.misc).toLocaleString()}.00
+              ₱{(totals.maintenance + totals.misc).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
             </h3>
           </div>
         </div>
@@ -693,17 +762,17 @@ export default function ReportsPage() {
               {showFinancials && (
                 <tr className="border-b border-slate-900">
                   <td className="bg-slate-100 font-bold p-2 border-r border-slate-900 text-slate-900">TOTAL TRIP REVENUE:</td>
-                  <td className="p-2 font-black text-[#00193c] border-r border-slate-900">₱{totals.revenue.toLocaleString()}.00</td>
+                  <td className="p-2 font-black text-[#00193c] border-r border-slate-900">₱{totals.revenue.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
                   <td className="bg-slate-100 font-bold p-2 border-r border-slate-900 text-slate-900">NET PROFIT:</td>
-                  <td className="p-2 font-black text-emerald-700">₱{totals.profit.toLocaleString()}.00</td>
+                  <td className="p-2 font-black text-emerald-700">₱{totals.profit.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
                 </tr>
               )}
               <tr>
                 <td className="bg-slate-100 font-bold p-2 border-r border-slate-900 text-slate-900">TOTAL EXPENSES:</td>
-                <td className="p-2 font-black text-rose-800 border-r border-slate-900">₱{totals.total.toLocaleString()}.00</td>
+                <td className="p-2 font-black text-rose-800 border-r border-slate-900">₱{totals.total.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
                 <td className="bg-slate-100 font-bold p-2 border-r border-slate-900 text-slate-900">FUEL SHARE:</td>
                 <td className="p-2 font-extrabold text-slate-900">
-                  ₱{totals.fuel.toLocaleString()}.00 ({totals.total > 0 ? ((totals.fuel / totals.total) * 100).toFixed(1) : 0}%)
+                  ₱{totals.fuel.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})} ({totals.total > 0 ? ((totals.fuel / totals.total) * 100).toFixed(1) : 0}%)
                 </td>
               </tr>
             </tbody>
@@ -717,7 +786,7 @@ export default function ReportsPage() {
               <thead>
                 <tr className="bg-slate-100 text-slate-900 font-extrabold uppercase text-[9.5px] tracking-tight border-b-2 border-slate-900">
                   <th className={`p-2 border border-slate-900 ${showFinancials ? 'w-[8%]' : 'w-[10%]'}`}>DATE REQ.</th>
-                  <th className={`p-2 border border-slate-900 ${showFinancials ? 'w-[9%]' : 'w-[10%]'}`}>TRIP #</th>
+                  <th className={`p-2 border border-slate-900 ${showFinancials ? 'w-[9%]' : 'w-[10%]'}`}>SEQUENCE #</th>
                   <th className={`p-2 border border-slate-900 ${showFinancials ? 'w-[20%]' : 'w-[26%]'}`}>EXPENSE DESCRIPTION / ITEMS</th>
                   <th className={`p-2 border border-slate-900 ${showFinancials ? 'w-[12%]' : 'w-[16%]'}`}>VEHICLE DETAILS</th>
                   <th className={`p-2 border border-slate-900 ${showFinancials ? 'w-[12%]' : 'w-[14%]'}`}>CUSTOMER & ROUTE</th>
@@ -757,7 +826,7 @@ export default function ReportsPage() {
                                 {e.category}: <span className="font-normal text-slate-700">{e.description || "Disbursement"}</span>
                               </span>
                               <span className="font-mono text-[9.5px] font-bold text-slate-900 bg-slate-50 px-1 py-0.2 rounded border border-slate-300">
-                                ₱{Number(e.amount || 0).toLocaleString()}
+                                ₱{Number(e.amount || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
                               </span>
                             </div>
                           ))}
@@ -782,15 +851,15 @@ export default function ReportsPage() {
                       </td>
                       {showFinancials && (
                         <td className="p-2 border border-slate-900 text-right font-mono font-extrabold text-[#00193c] text-xs whitespace-nowrap">
-                          ₱{Number(t.rate || 0).toLocaleString()}.00
+                          ₱{Number(t.rate || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
                         </td>
                       )}
                       <td className="p-2 border border-slate-900 text-right font-mono font-extrabold text-rose-700 text-xs whitespace-nowrap">
-                        ₱{b.total.toLocaleString()}.00
+                        ₱{b.total.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
                       </td>
                       {showFinancials && (
                         <td className="p-2 border border-slate-900 text-right font-mono font-extrabold text-emerald-600 text-xs whitespace-nowrap">
-                          ₱{(Number(t.rate || 0) - b.total).toLocaleString()}.00
+                          ₱{(Number(t.rate || 0) - b.total).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
                         </td>
                       )}
                     </tr>
@@ -799,19 +868,19 @@ export default function ReportsPage() {
                 {reportTrips.length > 0 && (
                   <tr className="bg-slate-100 text-slate-900 font-extrabold text-[11px] border-t-2 border-slate-900">
                     <td colSpan={6} className="p-2.5 border border-slate-900 text-right uppercase tracking-wider font-sans">
-                      GRAND TOTALS:
+                      FLEET TRIPS TOTALS:
                     </td>
                     {showFinancials && (
                       <td className="p-2.5 border border-slate-900 text-right text-[#00193c] font-mono font-black text-xs">
-                        ₱{totals.revenue.toLocaleString()}.00
+                        ₱{totals.revenue.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
                       </td>
                     )}
                     <td className="p-2.5 border border-slate-900 text-right text-rose-800 font-mono font-black text-xs">
-                      ₱{totals.total.toLocaleString()}.00
+                      ₱{(totals.total - totals.inventorySupply).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
                     </td>
                     {showFinancials && (
                       <td className="p-2.5 border border-slate-900 text-right text-emerald-700 font-mono font-black text-xs">
-                        ₱{totals.profit.toLocaleString()}.00
+                        ₱{(totals.profit + totals.inventorySupply).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
                       </td>
                     )}
                   </tr>
@@ -842,6 +911,99 @@ export default function ReportsPage() {
                 )}
               </tbody>
             </table>
+
+            {/* SECONDARY TABLE: FLEET INVENTORY DISBURSEMENTS */}
+            <div className="mt-8">
+              <h3 className="font-extrabold text-sm text-[#00193c] uppercase mb-2">Fleet Inventory Disbursements</h3>
+              <table className="autoworx-grid w-full text-left border-collapse text-[10.5px] table-fixed border-2 border-slate-900 bg-white">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-900 font-extrabold uppercase text-[9.5px] tracking-tight border-b-2 border-slate-900">
+                    <th className="p-2 border border-slate-900 w-[15%]">DATE REQ.</th>
+                    <th className="p-2 border border-slate-900 w-[30%]">SUPPLY ITEM</th>
+                    <th className="p-2 border border-slate-900 w-[20%]">VEHICLE DETAILS</th>
+                    <th className="p-2 border border-slate-900 w-[20%]">REMARKS</th>
+                    <th className="p-2 border border-slate-900 w-[15%] text-right font-black text-rose-800">EXPENSES</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-900 font-sans">
+                  {reportStockOuts.map((tx: any) => {
+                    const compDate = new Date(tx.createdAt).toLocaleDateString();
+                    return (
+                      <tr 
+                        key={tx.id} 
+                        onClick={() => setSelectedOverheadCategory("Inventory Supply")}
+                        className="bg-white leading-tight hover:bg-slate-100 transition-colors cursor-pointer"
+                        title="Click to view Inventory Category Inspector"
+                      >
+                        <td className="p-2 border border-slate-900 font-semibold text-slate-900 whitespace-nowrap">
+                          {compDate}
+                        </td>
+                        <td className="p-2 border border-slate-900">
+                          <p className="font-bold text-slate-900">{tx.item?.name}</p>
+                          <p className="text-slate-600 text-[10px]">
+                            {tx.quantity} {tx.item?.unit} @ ₱{Number(tx.unitCost || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})} / {tx.item?.unit}
+                          </p>
+                        </td>
+                        <td className="p-2 border border-slate-900">
+                          <p className="font-bold text-slate-900 truncate">{tx.truck?.unit}</p>
+                          <p className="text-slate-800 font-mono font-bold text-[10px]">{tx.truck?.plateNo}</p>
+                        </td>
+                        <td className="p-2 border border-slate-900">
+                          <p className="text-slate-700 italic text-[10px]">{tx.remarks || "No remarks"}</p>
+                        </td>
+                        <td className="p-2 border border-slate-900 text-right font-mono font-extrabold text-rose-700 text-xs whitespace-nowrap">
+                          ₱{Number(tx.totalCost).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {reportStockOuts.length > 0 && (
+                    <tr className="bg-slate-100 text-slate-900 font-extrabold text-[11px] border-t-2 border-slate-900">
+                      <td colSpan={4} className="p-2.5 border border-slate-900 text-right uppercase tracking-wider font-sans">
+                        INVENTORY TOTALS:
+                      </td>
+                      <td className="p-2.5 border border-slate-900 text-right text-rose-800 font-mono font-black text-xs">
+                        ₱{totals.inventorySupply.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+                      </td>
+                    </tr>
+                  )}
+                  {reportStockOuts.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="p-6 text-center border border-slate-900 bg-slate-50 text-slate-600 font-bold text-xs uppercase">
+                        No Inventory Disbursements Found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* OVERALL GRAND TOTALS */}
+            <div className="mt-8 flex justify-end">
+              <table className="autoworx-grid w-full sm:w-2/3 lg:w-1/2 text-left border-collapse text-[11px] border-2 border-slate-900 bg-white shadow-sm">
+                <tbody>
+                  <tr className="bg-[#00193c] text-white print:bg-slate-100 print:text-slate-900 font-extrabold uppercase tracking-widest text-[12px]">
+                    <td className="p-3 border border-slate-900 text-right">OVERALL GRAND TOTALS:</td>
+                    {showFinancials && (
+                      <td className="p-3 border border-slate-900 text-right text-blue-200 print:text-[#00193c] font-mono font-black">
+                        <span className="block text-[8px] text-blue-300 print:text-slate-600 font-sans tracking-wide leading-none mb-1">TOTAL REVENUE</span>
+                        ₱{totals.revenue.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+                      </td>
+                    )}
+                    <td className="p-3 border border-slate-900 text-right text-rose-300 print:text-rose-800 font-mono font-black">
+                      <span className="block text-[8px] text-rose-400 print:text-slate-600 font-sans tracking-wide leading-none mb-1">TOTAL EXPENSES</span>
+                      ₱{totals.total.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+                    </td>
+                    {showFinancials && (
+                      <td className="p-3 border border-slate-900 text-right text-emerald-300 print:text-emerald-700 font-mono font-black">
+                        <span className="block text-[8px] text-emerald-400 print:text-slate-600 font-sans tracking-wide leading-none mb-1">NET PROFIT</span>
+                        ₱{totals.profit.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+                      </td>
+                    )}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
@@ -878,7 +1040,7 @@ export default function ReportsPage() {
                       </span>
                     </td>
                     <td className="p-2.5 border border-slate-900 text-right font-mono font-extrabold text-slate-900 text-xs whitespace-nowrap">
-                      ₱{cat.amount.toLocaleString()}.00
+                      ₱{cat.amount.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
                     </td>
                   </tr>
                 ))}
@@ -892,7 +1054,7 @@ export default function ReportsPage() {
                     100.0%
                   </td>
                   <td className="p-3 border border-slate-900 text-right font-mono font-black text-sm text-slate-900">
-                    ₱{totals.total.toLocaleString()}.00
+                    ₱{totals.total.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
                   </td>
                 </tr>
               </tbody>
@@ -900,16 +1062,6 @@ export default function ReportsPage() {
           </div>
         )}
 
-        {/* Prepared By Office Staff Sign-Off Footer */}
-        <div className="pt-5 border-t-2 border-slate-900 flex justify-start mt-4">
-          <div className="w-64 mt-12">
-            <div className="border-t-2 border-slate-900 print-border-black pt-1.5 text-center">
-              <p className="text-[#334155] font-extrabold text-[11px] uppercase tracking-wider">
-                PREPARED BY: VIRGIE AGBONG
-              </p>
-            </div>
-          </div>
-        </div>
 
       </div>
 
@@ -987,7 +1139,7 @@ export default function ReportsPage() {
                 <div className="bg-rose-50 border border-rose-200 p-3 rounded-lg">
                   <span className="text-[10px] font-extrabold text-rose-900 uppercase block tracking-wider">Subtotal Disbursed</span>
                   <span className="text-base font-black text-rose-800 font-mono mt-0.5 block">
-                    ₱{selectedCategoryTotal.toLocaleString()}.00
+                    ₱{selectedCategoryTotal.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
                   </span>
                 </div>
               </div>
@@ -998,7 +1150,7 @@ export default function ReportsPage() {
                   <thead>
                     <tr className="bg-[#00193c] text-white font-extrabold uppercase text-[10px]">
                       <th className="p-2.5">Date</th>
-                      <th className="p-2.5">Trip #</th>
+                      <th className="p-2.5">Sequence #</th>
                       <th className="p-2.5">Vehicle Details</th>
                       <th className="p-2.5">Driver</th>
                       <th className="p-2.5">Customer & Route</th>
@@ -1007,39 +1159,69 @@ export default function ReportsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 font-sans text-[11px]">
-                    {selectedCategoryTrips.map((item, idx) => (
+                    {selectedCategoryTrips.map((item, idx) => {
+                      if (item.inventoryTx) {
+                        return (
+                          <tr key={`inv-${idx}`} className="bg-white">
+                            <td className="p-2.5 text-slate-800 whitespace-nowrap font-medium">
+                              {new Date(item.inventoryTx.createdAt).toLocaleDateString()}
+                            </td>
+                            <td className="p-2.5 font-mono font-bold text-[#00193c]">
+                              STOCK-OUT
+                            </td>
+                            <td className="p-2.5 font-bold text-slate-900">
+                              {item.inventoryTx.truck?.unit} <span className="font-mono text-slate-500 font-normal">({item.inventoryTx.truck?.plateNo})</span>
+                            </td>
+                            <td className="p-2.5 text-slate-800 font-medium">{item.inventoryTx.truck?.driver || "-"}</td>
+                            <td className="p-2.5 text-slate-800">
+                              <p className="font-bold text-[10px] text-slate-500">Fleet Inventory Allocation</p>
+                            </td>
+                            <td className="p-2.5 text-slate-700">
+                              <span className="font-semibold text-teal-700">{item.categoryName}: </span>
+                              <span>{item.itemDescription}</span>
+                            </td>
+                            <td className="p-2.5 text-right font-mono font-extrabold text-teal-700 text-xs">
+                              ₱{item.amount.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+                            </td>
+                          </tr>
+                        );
+                      }
+                      
+                      const t = item.trip!;
+                      return (
                       <tr
-                        key={idx}
+                        key={`trip-${idx}`}
                         onClick={() => {
                           setSelectedOverheadCategory(null);
-                          setViewingPaperTrip(item.trip);
+                          setViewingPaperTrip(t);
                         }}
                         className="hover:bg-blue-50/70 cursor-pointer transition-colors group"
                         title="Click to view Monitoring Form (Travel & Expense)"
                       >
                         <td className="p-2.5 text-slate-800 whitespace-nowrap font-medium">
-                          {item.trip.completedAt ? new Date(item.trip.completedAt).toLocaleDateString() : item.trip.dateOfTravel}
+                          {t.completedAt ? new Date(t.completedAt).toLocaleDateString() : t.dateOfTravel}
                         </td>
                         <td className="p-2.5 font-mono font-bold text-[#00193c] group-hover:underline">
-                          {item.trip.seqNo || item.trip.id}
+                          {t.seqNo || t.id}
                         </td>
                         <td className="p-2.5 font-bold text-slate-900">
-                          {item.trip.unit} <span className="font-mono text-slate-500 font-normal">({item.trip.plateNo})</span>
+                          {t.unit} <span className="font-mono text-slate-500 font-normal">({t.plateNo})</span>
                         </td>
-                        <td className="p-2.5 text-slate-800 font-medium">{item.trip.driver}</td>
+                        <td className="p-2.5 text-slate-800 font-medium">{t.driver}</td>
                         <td className="p-2.5 text-slate-800">
-                          <p className="font-bold">{item.trip.customerName}</p>
-                          <p className="text-[10px] text-slate-500">{item.trip.origin || "CDO"} → {item.trip.destination}</p>
+                          <p className="font-bold">{t.customerName}</p>
+                          <p className="text-[10px] text-slate-500">{t.origin || "CDO"} → {t.destination}</p>
                         </td>
                         <td className="p-2.5 text-slate-700">
                           <span className="font-semibold text-slate-900">{item.categoryName}: </span>
                           <span>{item.itemDescription}</span>
                         </td>
                         <td className="p-2.5 text-right font-mono font-extrabold text-rose-800 text-xs">
-                          ₱{item.amount.toLocaleString()}.00
+                          ₱{item.amount.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                     {selectedCategoryTrips.length === 0 && (
                       <tr>
                         <td colSpan={7} className="p-6 text-center text-slate-400 italic">

@@ -23,6 +23,9 @@ export default function CrewSettlementsPage() {
 
   const [inspectingTrip, setInspectingTrip] = useState<Trip | null>(null);
 
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [preparedBy, setPreparedBy] = useState("");
+
   const availableYears = [2024, 2025, 2026, 2027];
   const MONTH_NAMES = [
     "January", "February", "March", "April", "May", "June",
@@ -97,8 +100,15 @@ export default function CrewSettlementsPage() {
 
   const netPayout = accruedAllowances + bonus - deductions;
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrintClick = () => {
+    setIsPrintModalOpen(true);
+  };
+
+  const executePrint = () => {
+    setIsPrintModalOpen(false);
+    setTimeout(() => {
+      window.print();
+    }, 300);
   };
 
   if (!isLoaded) return <PageShell title="Loading Payroll..."><div>Loading...</div></PageShell>;
@@ -191,11 +201,11 @@ export default function CrewSettlementsPage() {
         {/* Action Button */}
         <div className="flex flex-col gap-1.5 shrink-0 justify-end">
           <button
-            onClick={handlePrint}
-            className="flex items-center justify-center gap-2 px-6 py-2 bg-[#00193c] hover:bg-blue-900 text-white rounded-xl font-extrabold text-sm shadow-md transition-all active:scale-95 h-[42px]"
+            onClick={handlePrintClick}
+            disabled={crewTrips.length === 0}
+            className="flex-1 lg:flex-none px-6 py-2.5 bg-[#00193c] hover:bg-blue-900 text-white rounded-xl text-sm font-extrabold flex items-center justify-center gap-2 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Printer className="w-4 h-4" />
-            Print Settlement
+            <Printer className="w-4 h-4" /> Print Settlement
           </button>
         </div>
       </div>
@@ -384,7 +394,7 @@ export default function CrewSettlementsPage() {
           <div className="text-center">
             <div className="border-t-2 border-slate-900 print-border-black pt-2">
               <p className="text-slate-900 print:text-black font-black text-sm uppercase tracking-wide">
-                PREPARED BY: VIRGIE AGBONG
+                PREPARED BY{preparedBy ? `: ${preparedBy}` : ""}
               </p>
             </div>
           </div>
@@ -397,6 +407,48 @@ export default function CrewSettlementsPage() {
         trip={inspectingTrip}
         onClose={() => setInspectingTrip(null)}
       />
+
+      {/* Print Settlement Modal */}
+      {isPrintModalOpen && (
+        <div className="fixed inset-0 z-50 bg-[#00193c]/70 backdrop-blur-sm flex items-center justify-center p-4 no-print">
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
+            <h3 className="font-extrabold text-[#00193c] text-lg font-manrope mb-4 flex items-center gap-2">
+              <Printer className="w-5 h-5 text-blue-600" />
+              Print Settlement
+            </h3>
+            
+            <div className="mb-6">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Prepared By (Name)</label>
+              <input
+                type="text"
+                value={preparedBy}
+                onChange={(e) => setPreparedBy(e.target.value)}
+                placeholder="e.g. VIRGIE AGBONG"
+                className="w-full px-4 py-3 border-2 border-slate-300 rounded-xl text-sm font-bold text-[#00193c] bg-white outline-none focus:border-[#00193c] focus:ring-4 focus:ring-blue-500/10 transition-all"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") executePrint();
+                }}
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3">
+              <button
+                onClick={() => setIsPrintModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-slate-500 font-bold text-sm hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={executePrint}
+                className="px-6 py-2 bg-[#00193c] hover:bg-blue-900 text-white rounded-xl text-sm font-extrabold shadow-md transition-all"
+              >
+                Continue & Print
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </PageShell>
   );
 }

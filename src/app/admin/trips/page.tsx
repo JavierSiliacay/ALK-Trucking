@@ -125,7 +125,7 @@ export default function TripsPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search Trip #, Driver, Truck Unit, Plate, Customer, Route..."
+            placeholder="Search Sequence #, Driver, Truck Unit, Plate, Customer, Route..."
             className="w-full pl-10 pr-9 py-2.5 bg-white border-2 border-slate-300 focus:border-[#00193c] rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#00193c]/20 transition-all shadow-2xs"
           />
           {search && (
@@ -169,7 +169,7 @@ export default function TripsPage() {
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-[#f1f4f7] border-b border-[#c4c6d1]">
-                  <th className="px-6 py-4 font-bold text-[#00193c]">Trip #</th>
+                  <th className="px-6 py-4 font-bold text-[#00193c]">Sequence #</th>
                   <th className="px-6 py-4 font-bold text-[#00193c]">Date</th>
                   <th className="px-6 py-4 font-bold text-[#00193c]">Truck / Plate</th>
                   <th className="px-6 py-4 font-bold text-[#00193c]">Crew</th>
