@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { TrendingUp, TrendingDown, Receipt, Truck as TruckIcon, Calendar, X, FileText, PackageOpen, ChevronDown } from "lucide-react";
 import wingvanImg from "../../../public/wingvan.png";
@@ -33,6 +33,7 @@ type TruckStats = {
   revenue: number;
   tripExpenses: number;
   inventoryExpenses: number;
+  maintenanceExpenses: number;
   totalExpenses: number;
   netProfit: number;
 };
@@ -45,6 +46,7 @@ type TruckPerformance = {
   stats: TruckStats;
   trips?: Trip[];
   inventoryTransactions?: InventoryTx[];
+  maintenanceRecords?: any[];
 };
 
 const MONTHS = [
@@ -78,8 +80,16 @@ export default function FleetClient({
   const pathname = usePathname();
   
   const [selectedTruck, setSelectedTruck] = useState<TruckPerformance | null>(null);
-  const [activeTab, setActiveTab] = useState<"trips" | "diesel">("trips");
+  const [activeTab, setActiveTab] = useState<"trips" | "diesel" | "maintenance">("trips");
   const [inspectingTrip, setInspectingTrip] = useState<any>(null);
+
+  // Auto-refresh the page data every 30 seconds to keep stats live
+  useEffect(() => {
+    const interval = setInterval(() => {
+      router.refresh();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [router]);
 
   const handleFilterChange = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -312,6 +322,14 @@ export default function FleetClient({
                   </div>
                   <span className="font-bold text-slate-800">₱{truck.stats.inventoryExpenses.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
                 </div>
+
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2 text-rose-500">
+                    <div className="p-1.5 bg-rose-100 rounded-lg"><TrendingDown className="w-4 h-4" /></div>
+                    <span className="text-sm font-semibold">Maintenance</span>
+                  </div>
+                  <span className="font-bold text-slate-800">₱{truck.stats.maintenanceExpenses.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</span>
+                </div>
               </div>
 
               <div className="p-5 bg-[#00193c] group-hover:bg-[#002d62] text-white flex justify-between items-center transition-colors relative overflow-hidden">
@@ -390,18 +408,30 @@ export default function FleetClient({
                 Trips Ledger (Revenue & Misc Expenses)
                 <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-xs">{selectedTruck.trips?.length || 0}</span>
               </button>
-              <button 
-                onClick={() => setActiveTab("diesel")}
-                className={`pb-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
-                  activeTab === "diesel" 
-                    ? "border-rose-600 text-rose-700" 
-                    : "border-transparent text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                <PackageOpen className="w-4 h-4" />
-                Diesel & Supply Ledger (Inventory)
-                <span className="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-xs">{selectedTruck.inventoryTransactions?.length || 0}</span>
-              </button>
+                <button 
+                  onClick={() => setActiveTab("diesel")}
+                  className={`pb-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
+                    activeTab === "diesel" 
+                      ? "border-rose-600 text-rose-700" 
+                      : "border-transparent text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  <TrendingDown className="w-4 h-4" />
+                  Inventory Expenses
+                  <span className="bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full text-xs">{selectedTruck.inventoryTransactions?.length || 0}</span>
+                </button>
+                <button 
+                  onClick={() => setActiveTab("maintenance")}
+                  className={`pb-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 ${
+                    activeTab === "maintenance" 
+                      ? "border-rose-600 text-rose-700" 
+                      : "border-transparent text-slate-500 hover:text-slate-700"
+                  }`}
+                >
+                  <TrendingDown className="w-4 h-4" />
+                  Maintenance
+                  <span className="bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full text-xs">{selectedTruck.maintenanceRecords?.length || 0}</span>
+                </button>
             </div>
 
             {/* Modal Content */}
@@ -498,16 +528,68 @@ export default function FleetClient({
                       )}
                     </tbody>
                     <tfoot className="bg-slate-50 border-t border-slate-200 font-bold">
-                      <tr>
-                        <td colSpan={4} className="px-5 py-4 text-right text-slate-500 text-xs uppercase tracking-wider">Total Inventory Expenses</td>
-                        <td className="px-5 py-4 text-right text-rose-700 text-lg">
-                          ₱{selectedTruck.stats.inventoryExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                        </td>
-                      </tr>
-                    </tfoot>
+                        <tr>
+                          <td colSpan={4} className="px-5 py-4 text-right text-slate-500 text-xs uppercase tracking-wider">Total Inventory Expenses</td>
+                          <td className="px-5 py-4 text-right text-rose-700 text-lg">
+                            ₱{selectedTruck.stats.inventoryExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                          </td>
+                        </tr>
+                      </tfoot>
                   </table>
                 </div>
               )}
+
+                {activeTab === "maintenance" && (
+                  <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                    <table className="w-full text-left border-collapse">
+                      <thead className="bg-slate-100 text-slate-500 text-[10px] font-bold uppercase tracking-wider sticky top-0 z-10 border-b border-slate-200">
+                        <tr>
+                          <th className="px-5 py-3">Date Incurred</th>
+                          <th className="px-5 py-3">Maintenance Item / Desc</th>
+                          <th className="px-5 py-3">Category & Status</th>
+                          <th className="px-5 py-3 text-right">Expense Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-sm">
+                        {selectedTruck.maintenanceRecords?.map((m, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                            <td className="px-5 py-4 font-medium text-slate-700">
+                              {new Date(m.dateIncurred || m.createdAt).toLocaleDateString()}
+                            </td>
+                            <td className="px-5 py-4">
+                              <p className="font-bold text-slate-900">{m.description}</p>
+                              {m.autoworxJobId && <p className="text-blue-600 font-mono text-[10px] mt-0.5">AWX JOB: {m.autoworxJobId}</p>}
+                            </td>
+                            <td className="px-5 py-4">
+                              <p className="text-slate-800 font-medium uppercase tracking-wider">{m.category || "Maintenance"}</p>
+                              <p className={`font-bold text-[10px] mt-0.5 ${m.autoworxJobId ? 'text-blue-700' : 'text-emerald-700'}`}>
+                                {m.autoworxJobId ? "AUTOWORX SYNC" : "MANUAL LOG"}
+                              </p>
+                            </td>
+                            <td className="px-5 py-4 text-right font-black text-rose-600">
+                              ₱{Number(m.cost || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            </td>
+                          </tr>
+                        ))}
+                        {(!selectedTruck.maintenanceRecords || selectedTruck.maintenanceRecords.length === 0) && (
+                          <tr>
+                            <td colSpan={4} className="px-5 py-10 text-center text-slate-400">
+                              No maintenance records found for this truck.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                      <tfoot className="bg-slate-50 border-t border-slate-200 font-bold">
+                        <tr>
+                          <td colSpan={3} className="px-5 py-4 text-right text-slate-500 text-xs uppercase tracking-wider">Total Maintenance Expenses</td>
+                          <td className="px-5 py-4 text-right text-rose-700 text-lg">
+                            ₱{selectedTruck.stats.maintenanceExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
 
             </div>
           </div>

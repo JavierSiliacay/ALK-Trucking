@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTrips, calculateTripTotals } from "@/lib/trips-store";
 import TripFormModal from "@/components/trips/TripFormModal";
 import { getAllStockOuts } from "@/actions/inventory";
+import { getMaintenanceRecords } from "@/actions/maintenance";
 
 export default function DashboardPage() {
   const { trips, activeTrips, completedTrips, addTrip, masterData } = useTrips();
@@ -13,9 +14,11 @@ export default function DashboardPage() {
   const [isRevenueModalOpen, setIsRevenueModalOpen] = useState(false);
   const [isProfitModalOpen, setIsProfitModalOpen] = useState(false);
   const [stockOuts, setStockOuts] = useState<any[]>([]);
+  const [maintenanceRecords, setMaintenanceRecords] = useState<any[]>([]);
 
   React.useEffect(() => {
     getAllStockOuts().then(setStockOuts);
+    getMaintenanceRecords().then(data => setMaintenanceRecords(data.filter((r: any) => r.status === "Completed")));
   }, []);
   
   const [filterType, setFilterType] = useState<"Today" | "Monthly" | "Yearly" | "All Time">("Monthly");
@@ -77,6 +80,30 @@ export default function DashboardPage() {
     });
   }, [stockOuts, filterType, selectedMonth, selectedYear]);
 
+  // Maintenance Filtering Logic
+  const filteredMaintenance = useMemo(() => {
+    const now = new Date();
+    return maintenanceRecords.filter((m) => {
+      if (filterType === "All Time") return true;
+      
+      const dateStr = m.dateIncurred || m.createdAt;
+      if (!dateStr) return false;
+      
+      const mDate = new Date(dateStr);
+      
+      if (filterType === "Today") {
+        return mDate.toDateString() === now.toDateString();
+      }
+      if (filterType === "Monthly") {
+        return mDate.getMonth() === selectedMonth && mDate.getFullYear() === selectedYear;
+      }
+      if (filterType === "Yearly") {
+        return mDate.getFullYear() === selectedYear;
+      }
+      return true;
+    });
+  }, [maintenanceRecords, filterType, selectedMonth, selectedYear]);
+
   const dateString = useMemo(() => {
     if (filterType === "Today") return "Today";
     if (filterType === "All Time") return "All Time";
@@ -101,8 +128,12 @@ export default function DashboardPage() {
     const inventoryCost = filteredStockOuts.reduce((sum, tx) => sum + Number(tx.totalCost || 0), 0);
     exp += inventoryCost;
 
+    // Add maintenance expenses
+    const maintenanceCost = filteredMaintenance.reduce((sum, m) => sum + Number(m.cost || 0), 0);
+    exp += maintenanceCost;
+
     return { grossRevenue: rev, totalExpenses: exp, netProfit: rev - exp };
-  }, [filteredTrips, filteredStockOuts]);
+  }, [filteredTrips, filteredStockOuts, filteredMaintenance]);
 
   // Detailed Expense Breakdown
   const expenseBreakdown = useMemo(() => {
@@ -132,9 +163,11 @@ export default function DashboardPage() {
     });
 
     const inventoryCost = filteredStockOuts.reduce((sum, tx) => sum + Number(tx.totalCost || 0), 0);
+    const maintenanceCost = filteredMaintenance.reduce((sum, m) => sum + Number(m.cost || 0), 0);
+    maintenance += maintenanceCost; // Add to existing trip maintenance costs
 
     return { fuel, driverWages, helperWages, maintenance, misc, inventoryCost };
-  }, [filteredTrips, filteredStockOuts]);
+  }, [filteredTrips, filteredStockOuts, filteredMaintenance]);
 
   // Detailed Revenue Breakdown by Customer
   const revenueBreakdown = useMemo(() => {
@@ -239,7 +272,7 @@ export default function DashboardPage() {
           onClick={() => setIsExpenseModalOpen(true)}
           className="bg-white p-6 rounded-2xl border border-[#c4c6d1] card-shadow flex flex-col justify-between hover:-translate-y-1 hover:border-blue-500 hover:ring-4 hover:ring-blue-500/10 cursor-pointer transition-all duration-300 group"
         >
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex justify-between items-start mb-4">
             <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center group-hover:bg-blue-100 transition-colors">
               <span className="material-symbols-outlined text-rose-600 text-[24px] group-hover:text-blue-600 transition-colors">receipt_long</span>
             </div>
@@ -249,7 +282,7 @@ export default function DashboardPage() {
             <span className="font-extrabold text-3xl text-slate-900 font-mono tracking-tight block">
               {formatPHP(totalExpenses)}
             </span>
-            <span className="text-xs text-slate-500 font-medium mt-1 block">Trips & warehouse inventory stock-outs</span>
+            <span className="text-xs text-slate-500 font-medium mt-1 block">Trips, warehouse stock-outs, & maintenance</span>
           </div>
         </div>
 

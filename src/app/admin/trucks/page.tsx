@@ -45,7 +45,7 @@ export default async function TrucksPage({
 
   return (
     <FleetClient 
-      trucks={performance} 
+      trucks={performance}
       initialStatus={status}
       initialDateRange={dateRange}
       initialMonth={month}

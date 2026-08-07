@@ -19,13 +19,8 @@
   - ALK will expose `/api/webhooks/autoworx` to listen for incoming Job Orders.
   - Autoworx will expose `/api/webhooks/alk` to listen for approvals.
 - **Security:** Both endpoints must be secured using a shared Secret API Key (Bearer token) to prevent unauthorized requests.
-- **CORS:** Ensure `alk-trucking.com` only accepts cross-origin requests from `autoworxcagayan.com`.
+- **CORS:** Ensure `alk-trucking.vercel.app` only accepts cross-origin requests from `autoworxcagayan.com`.
 
-## 3. Recommended Pro Features
-
-- **Deep-Linking:** Every pending estimate in the ALK Maintenance module will have an "Open in Autoworx" button that links directly to the specific Job Order URL in the Autoworx system.
-- **Shared Inventory Awareness:** Autoworx can query the ALK Inventory API. If Autoworx needs a part (e.g., a fuel filter) and ALK's warehouse has it in stock, the mechanic is notified to request the part from ALK instead of purchasing a new one.
-- **Preventive Maintenance (PM) Alerts:** Autoworx pushes PM due dates (e.g., Oil Change due based on mileage) straight to a "Requires Attention" widget on the ALK dashboard.
 
 ## Next Steps
 

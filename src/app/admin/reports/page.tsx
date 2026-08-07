@@ -10,6 +10,7 @@ import TripInspectorModal from "@/components/trips/TripInspectorModal";
 import DigitalPaperForm from "@/components/trips/DigitalPaperForm";
 import { X, Truck, Calendar, MapPin, CreditCard, DollarSign, PackageOpen } from "lucide-react";
 import { getAllStockOuts } from "@/actions/inventory";
+import { getMaintenanceRecords } from "@/actions/maintenance";
 
 type ReportPeriod = "daily" | "weekly" | "monthly" | "yearly" | "overall" | "custom";
 type ViewMode = "detailed" | "summary";
@@ -48,6 +49,7 @@ export default function ReportsPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "completed">("all");
   const [showFinancials, setShowFinancials] = useState<boolean>(true);
   const [stockOuts, setStockOuts] = useState<any[]>([]);
+  const [maintenanceRecords, setMaintenanceRecords] = useState<any[]>([]);
 
   // Stable Audit Number to prevent SSR hydration mismatch
   const auditNo = "AUD-600383";
@@ -57,6 +59,7 @@ export default function ReportsPage() {
 
   React.useEffect(() => {
     getAllStockOuts().then(data => setStockOuts(data));
+    getMaintenanceRecords().then(data => setMaintenanceRecords(data.filter((r: any) => r.status === "Completed")));
   }, []);
 
   const getFilteredTrips = (): Trip[] => {
@@ -142,6 +145,33 @@ export default function ReportsPage() {
 
   const reportStockOuts = getFilteredStockOuts();
 
+  const getFilteredMaintenanceRecords = () => {
+    return maintenanceRecords.filter(m => {
+      const mDateStr = new Date(m.dateIncurred || m.createdAt).toISOString().split("T")[0];
+      const mDate = new Date(m.dateIncurred || m.createdAt);
+
+      if (filterPeriod === "daily") {
+        return mDateStr === selectedDay;
+      }
+      if (filterPeriod === "monthly") {
+        return mDate.getMonth() === selectedMonth && mDate.getFullYear() === selectedYear;
+      }
+      if (filterPeriod === "yearly") {
+        return mDate.getFullYear() === selectedYear;
+      }
+      if (filterPeriod === "overall") {
+        return true; 
+      }
+      if (filterPeriod === "custom") {
+        if (!customStartDate || !customEndDate) return true;
+        return mDateStr >= customStartDate && mDateStr <= customEndDate;
+      }
+      return true;
+    });
+  };
+
+  const reportMaintenanceRecords = getFilteredMaintenanceRecords();
+
   // Helper to extract itemized expense breakdown for each trip row
   const getTripExpenseBreakdown = (t: Trip) => {
     let fuel = 0;
@@ -189,8 +219,11 @@ export default function ReportsPage() {
   );
 
   const inventoryTotalCost = reportStockOuts.reduce((sum, tx) => sum + Number(tx.totalCost), 0);
+  const manualMaintenanceTotalCost = reportMaintenanceRecords.reduce((sum, m) => sum + Number(m.cost), 0);
+  
   totals.inventorySupply = inventoryTotalCost;
-  totals.total += inventoryTotalCost;
+  totals.maintenance += manualMaintenanceTotalCost;
+  totals.total += inventoryTotalCost + manualMaintenanceTotalCost;
   totals.profit = totals.revenue - totals.total;
 
   // Overhead Category Summary Computations (Autoworx System Style)
@@ -218,6 +251,7 @@ export default function ReportsPage() {
     const result: Array<{
       trip?: Trip;
       inventoryTx?: any;
+      maintenanceTx?: any;
       categoryName: string;
       itemDescription: string;
       amount: number;
@@ -269,8 +303,21 @@ export default function ReportsPage() {
       });
     }
 
+    // Also include manual maintenance records if category is Total Expenses or Maintenance
+    if (categoryKey.includes("total") || categoryKey === "total expenses" || categoryKey.includes("maintenance")) {
+      reportMaintenanceRecords.forEach((m) => {
+        const prefix = m.autoworxJobId ? "Autoworx Repairs" : "Manual Entry";
+        result.push({
+          maintenanceTx: m,
+          categoryName: m.category || "Maintenance",
+          itemDescription: `${prefix}: ${m.description} ${m.truck ? `(${m.truck.plateNo})` : ""}`,
+          amount: Number(m.cost) || 0,
+        });
+      });
+    }
+
     return result;
-  }, [reportTrips, selectedOverheadCategory]);
+  }, [reportTrips, selectedOverheadCategory, reportStockOuts, reportMaintenanceRecords]);
 
   const selectedCategoryTotal = useMemo(() => {
     return selectedCategoryTrips.reduce((acc, curr) => acc + curr.amount, 0);
@@ -405,7 +452,7 @@ export default function ReportsPage() {
           .print-only {
             display: block !important;
           }
-          .overflow-x-auto {
+          .overflow-x-auto, .overflow-y-auto {
             overflow: visible !important;
           }
           aside, header, nav, .no-print, [class*="Header"], [class*="Sidebar"] {
@@ -641,7 +688,7 @@ export default function ReportsPage() {
       </div>
 
       {/* Bento Expense Summary Cards (NO-PRINT) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 no-print">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3.5 no-print">
         <div 
           onClick={() => setSelectedOverheadCategory("Total Expenses")}
           className="bg-white border border-[#c4c6d1] p-4.5 rounded-xl flex flex-col justify-between card-shadow cursor-pointer hover:bg-slate-50 transition-colors group"
@@ -697,16 +744,31 @@ export default function ReportsPage() {
         </div>
 
         <div 
-          onClick={() => setSelectedOverheadCategory("Maintenance & Misc")}
+          onClick={() => setSelectedOverheadCategory("Maintenance")}
           className="bg-white border border-[#c4c6d1] p-4.5 rounded-xl flex flex-col justify-between card-shadow cursor-pointer hover:bg-slate-50 transition-colors group"
         >
           <div className="flex justify-between items-start">
             <span className="material-symbols-outlined text-indigo-700 text-[20px] group-hover:scale-110 transition-transform">build</span>
           </div>
           <div className="mt-3">
-            <span className="text-[#43474f] font-bold text-xs uppercase tracking-wide group-hover:text-[#00193c] transition-colors">Maintenance & Misc</span>
+            <span className="text-[#43474f] font-bold text-xs uppercase tracking-wide group-hover:text-[#00193c] transition-colors">Maintenance</span>
             <h3 className="font-extrabold text-2xl text-indigo-950 mt-0.5 font-mono">
-              ₱{(totals.maintenance + totals.misc).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+              ₱{totals.maintenance.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+            </h3>
+          </div>
+        </div>
+
+        <div 
+          onClick={() => setSelectedOverheadCategory("Other / Misc")}
+          className="bg-white border border-[#c4c6d1] p-4.5 rounded-xl flex flex-col justify-between card-shadow cursor-pointer hover:bg-slate-50 transition-colors group"
+        >
+          <div className="flex justify-between items-start">
+            <span className="material-symbols-outlined text-slate-700 text-[20px] group-hover:scale-110 transition-transform">more_horiz</span>
+          </div>
+          <div className="mt-3">
+            <span className="text-[#43474f] font-bold text-xs uppercase tracking-wide group-hover:text-[#00193c] transition-colors">Other / Misc</span>
+            <h3 className="font-extrabold text-2xl text-slate-900 mt-0.5 font-mono">
+              ₱{totals.misc.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
             </h3>
           </div>
         </div>
@@ -978,6 +1040,69 @@ export default function ReportsPage() {
               </table>
             </div>
 
+            {/* TERTIARY TABLE: FLEET MAINTENANCE DISBURSEMENTS */}
+            <div className="mt-8">
+              <h3 className="font-extrabold text-sm text-[#00193c] uppercase mb-2">Fleet Maintenance Disbursements</h3>
+              <table className="autoworx-grid w-full text-left border-collapse text-[10.5px] table-fixed border-2 border-slate-900 bg-white">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-900 font-extrabold uppercase text-[9.5px] tracking-tight border-b-2 border-slate-900">
+                    <th className="p-2 border border-slate-900 w-[15%]">DATE INCD.</th>
+                    <th className="p-2 border border-slate-900 w-[30%]">MAINTENANCE ITEM / DESC</th>
+                    <th className="p-2 border border-slate-900 w-[20%]">VEHICLE DETAILS</th>
+                    <th className="p-2 border border-slate-900 w-[20%]">CATEGORY & STATUS</th>
+                    <th className="p-2 border border-slate-900 w-[15%] text-right font-black text-rose-800">EXPENSES</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-900 font-sans">
+                  {reportMaintenanceRecords.map((m: any) => {
+                    const compDate = new Date(m.dateIncurred || m.createdAt).toLocaleDateString();
+                    return (
+                      <tr 
+                        key={m.id} 
+                        onClick={() => setSelectedOverheadCategory("Maintenance")}
+                        className="bg-white leading-tight hover:bg-slate-100 transition-colors cursor-pointer"
+                        title="Click to view Maintenance Category Inspector"
+                      >
+                        <td className="p-2 border border-slate-900 font-semibold text-slate-900 whitespace-nowrap">
+                          {compDate}
+                        </td>
+                        <td className="p-2 border border-slate-900">
+                          <p className="font-bold text-slate-900">{m.description}</p>
+                          {m.autoworxJobId && <p className="text-blue-600 font-mono text-[10px] mt-0.5">AWX JOB: {m.autoworxJobId}</p>}
+                        </td>
+                        <td className="p-2 border border-slate-900">
+                          {m.truck ? (
+                            <>
+                              <p className="font-bold text-slate-900">{m.truck.unit}</p>
+                              <p className="font-mono text-slate-500 text-[10px]">({m.truck.plateNo})</p>
+                            </>
+                          ) : (
+                            <p className="font-bold text-slate-900">General Fleet</p>
+                          )}
+                        </td>
+                        <td className="p-2 border border-slate-900">
+                          <p className="text-slate-800 font-medium uppercase tracking-wider">{m.category || "Maintenance"}</p>
+                          <p className={`font-bold text-[10px] mt-0.5 ${m.autoworxJobId ? 'text-blue-700' : 'text-emerald-700'}`}>
+                            {m.autoworxJobId ? "AUTOWORX SYNC" : "MANUAL LOG"}
+                          </p>
+                        </td>
+                        <td className="p-2 border border-slate-900 text-right font-mono font-black text-rose-800 text-xs">
+                          ₱{Number(m.cost || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {reportMaintenanceRecords.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="p-4 text-center border border-slate-900 text-slate-500 font-bold uppercase text-[10px]">
+                        No Maintenance Disbursements Found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
             {/* OVERALL GRAND TOTALS */}
             <div className="mt-8 flex justify-end">
               <table className="autoworx-grid w-full sm:w-2/3 lg:w-1/2 text-left border-collapse text-[11px] border-2 border-slate-900 bg-white shadow-sm">
@@ -1181,6 +1306,33 @@ export default function ReportsPage() {
                               <span>{item.itemDescription}</span>
                             </td>
                             <td className="p-2.5 text-right font-mono font-extrabold text-teal-700 text-xs">
+                              ₱{item.amount.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+                            </td>
+                          </tr>
+                        );
+                      }
+                      
+                      if (item.maintenanceTx) {
+                        return (
+                          <tr key={`main-${idx}`} className="bg-white">
+                            <td className="p-2.5 text-slate-800 whitespace-nowrap font-medium">
+                              {new Date(item.maintenanceTx.dateIncurred || item.maintenanceTx.createdAt).toLocaleDateString()}
+                            </td>
+                            <td className="p-2.5 font-mono font-bold text-[#00193c]">
+                              {item.maintenanceTx.autoworxJobId ? "AUTOWORX SYNC" : "MANUAL LOG"}
+                            </td>
+                            <td className="p-2.5 font-bold text-slate-900">
+                              {item.maintenanceTx.truck?.unit || "General Fleet"} <span className="font-mono text-slate-500 font-normal">({item.maintenanceTx.truck?.plateNo || "N/A"})</span>
+                            </td>
+                            <td className="p-2.5 text-slate-800 font-medium">-</td>
+                            <td className="p-2.5 text-slate-800">
+                              <p className="font-bold text-[10px] text-slate-500">Maintenance & Repairs</p>
+                            </td>
+                            <td className="p-2.5 text-slate-700">
+                              <span className="font-semibold text-rose-700">{item.categoryName}: </span>
+                              <span>{item.itemDescription}</span>
+                            </td>
+                            <td className="p-2.5 text-right font-mono font-extrabold text-rose-700 text-xs">
                               ₱{item.amount.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
                             </td>
                           </tr>

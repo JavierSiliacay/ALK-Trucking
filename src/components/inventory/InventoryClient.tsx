@@ -103,7 +103,13 @@ export default function InventoryClient({
     e.preventDefault();
     if (!selectedItem) return;
     try {
-      await recordStockIn(selectedItem.id, Number(quantity), Number(totalCost), remarks, new Date(transactionDate));
+      await recordStockIn(
+        selectedItem.id, 
+        Number(quantity.toString().replace(/,/g, "")), 
+        Number(totalCost.toString().replace(/,/g, "")), 
+        remarks, 
+        new Date(transactionDate)
+      );
       toast.success("Stock-In recorded successfully");
       setIsStockInOpen(false);
       window.location.reload();
@@ -503,12 +509,22 @@ export default function InventoryClient({
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1.5">Quantity ({selectedItem.unit})</label>
-                  <input required type="number" step="0.01" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="0.00" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none" />
+                  <input required type="text" value={quantity} onChange={e => setQuantity(e.target.value.replace(/[^\d.]/g, ""))} placeholder="0.00" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none" />
                 </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1.5">Total Cost Paid (₱)</label>
-                <input required type="number" step="0.01" value={totalCost} onChange={e => setTotalCost(e.target.value)} placeholder="0.00" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none" />
+                <input required type="text" value={totalCost} onChange={e => {
+                  let val = e.target.value.replace(/[^\d.]/g, "");
+                  const parts = val.split(".");
+                  if (parts.length > 2) val = parts[0] + "." + parts.slice(1).join("");
+                  if (val) {
+                    const splitVal = val.split(".");
+                    splitVal[0] = splitVal[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                    val = splitVal.join(".");
+                  }
+                  setTotalCost(val);
+                }} placeholder="0.00" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none" />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-500 mb-1.5">Remarks / Supplier</label>

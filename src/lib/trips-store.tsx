@@ -145,8 +145,15 @@ export function TripsProvider({ children, initialTrips, initialMasterData }: { c
     }
     const handleUpdate = () => refresh();
     window.addEventListener("alk_trips_updated", handleUpdate);
+    
+    // Auto-refresh the trips data every 30 seconds
+    const interval = setInterval(() => {
+      refresh();
+    }, 30000);
+
     return () => {
       window.removeEventListener("alk_trips_updated", handleUpdate);
+      clearInterval(interval);
     };
   }, [initialTrips]);
 

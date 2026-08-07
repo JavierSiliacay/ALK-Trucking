@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, varchar, decimal, uuid, index, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, varchar, decimal, uuid, index, boolean, jsonb } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 export const trips = pgTable("trips", {
@@ -121,4 +121,30 @@ export const inventoryTransactionsRelations = relations(inventoryTransactions, (
     fields: [inventoryTransactions.truckId],
     references: [trucks.id],
   }),
+}));
+
+export const maintenanceRecords = pgTable("maintenance_records", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  truckId: uuid("truck_id").references(() => trucks.id, { onDelete: "set null" }), // Optional for general ALK expenses
+  autoworxJobId: varchar("autoworx_job_id", { length: 255 }).unique(), // Can be null if manual ALK record
+  category: varchar("category", { length: 255 }),
+  description: text("description").notNull(),
+  autoworxVehicleDetails: varchar("autoworx_vehicle_details", { length: 255 }),
+  repairBreakdown: jsonb("repair_breakdown"), // Detailed breakdown from Autoworx costing
+  cost: decimal("cost", { precision: 12, scale: 2 }).notNull().default("0"),
+  status: varchar("status", { length: 50 }).notNull().default("Pending"), // "Pending", "Approved", "Completed"
+  dateIncurred: timestamp("date_incurred").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const maintenanceRecordsRelations = relations(maintenanceRecords, ({ one }) => ({
+  truck: one(trucks, {
+    fields: [maintenanceRecords.truckId],
+    references: [trucks.id],
+  }),
+}));
+
+export const trucksRelations = relations(trucks, ({ many }) => ({
+  maintenance: many(maintenanceRecords),
 }));

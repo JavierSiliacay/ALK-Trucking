@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { trucks, trips, expenses, inventoryTransactions } from "@/db/schema";
+import { trucks, trips, expenses, inventoryTransactions, maintenanceRecords } from "@/db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";
 
 export async function getFleetPerformance(startDate?: Date, endDate?: Date, status: string = "active") {
@@ -24,6 +24,10 @@ export async function getFleetPerformance(startDate?: Date, endDate?: Date, stat
     where: eq(inventoryTransactions.type, "STOCK-OUT"),
   });
 
+  const allMaintenance = await db.query.maintenanceRecords.findMany({
+    where: eq(maintenanceRecords.status, "Completed"),
+  });
+
   // Filter trips and inventory by date if provided
   const filteredTrips = allTrips.filter(t => {
     if (startDate && new Date(t.dateOfTravel) < startDate) return false;
@@ -34,6 +38,13 @@ export async function getFleetPerformance(startDate?: Date, endDate?: Date, stat
   const filteredInvTxs = allInventoryTxs.filter(tx => {
     if (startDate && new Date(tx.createdAt) < startDate) return false;
     if (endDate && new Date(tx.createdAt) > endDate) return false;
+    return true;
+  });
+
+  const filteredMaintenance = allMaintenance.filter(m => {
+    const d = new Date(m.dateIncurred || m.createdAt);
+    if (startDate && d < startDate) return false;
+    if (endDate && d > endDate) return false;
     return true;
   });
 
@@ -52,7 +63,11 @@ export async function getFleetPerformance(startDate?: Date, endDate?: Date, stat
     const truckInvTxs = filteredInvTxs.filter(tx => tx.truckId === truck.id);
     const inventoryExpenses = truckInvTxs.reduce((sum, tx) => sum + Number(tx.totalCost), 0);
 
-    const totalExpenses = tripExpenses + inventoryExpenses;
+    // 4. Maintenance Expenses
+    const truckMaintenance = filteredMaintenance.filter(m => m.truckId === truck.id);
+    const maintenanceExpenses = truckMaintenance.reduce((sum, m) => sum + Number(m.cost), 0);
+
+    const totalExpenses = tripExpenses + inventoryExpenses + maintenanceExpenses;
     const netProfit = revenue - totalExpenses;
 
     return {
@@ -62,11 +77,13 @@ export async function getFleetPerformance(startDate?: Date, endDate?: Date, stat
         revenue,
         tripExpenses,
         inventoryExpenses,
+        maintenanceExpenses,
         totalExpenses,
         netProfit,
       },
       trips: truckTrips,
-      inventoryTransactions: truckInvTxs
+      inventoryTransactions: truckInvTxs,
+      maintenanceRecords: truckMaintenance
     };
   });
 
