@@ -25,7 +25,16 @@ export default function MaintenancePage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
+  const [isSyncEnabled, setIsSyncEnabled] = useState(false);
   const limit = 15;
+
+  useEffect(() => {
+    import("@/actions/settings").then(mod => {
+      mod.getSystemSetting("ENABLE_AUTOWORX_SYNC", "true").then(val => {
+        setIsSyncEnabled(val === "true");
+      });
+    });
+  }, []);
 
   const fetchRecords = async (page = currentPage, tab = activeTab, search = searchQuery, source = filterSource) => {
     try {
@@ -127,7 +136,7 @@ export default function MaintenancePage() {
           >
             <option value="all">All Sources</option>
             <option value="manual">Manual Entry</option>
-            <option value="autoworx">Autoworx Sync</option>
+            {isSyncEnabled && <option value="autoworx">Autoworx Sync</option>}
           </select>
           <div className="relative w-full md:w-80">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />

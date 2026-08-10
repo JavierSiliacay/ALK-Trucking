@@ -4,6 +4,8 @@ import { db } from "@/db";
 import { maintenanceRecords, trucks } from "@/db/schema";
 import { eq, desc, ilike, or, and, isNull, isNotNull, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { getSystemSetting } from "@/actions/settings";
+import { unstable_noStore as noStore } from "next/cache";
 
 export async function getPaginatedMaintenanceRecords(params: {
   page: number;
@@ -12,6 +14,7 @@ export async function getPaginatedMaintenanceRecords(params: {
   source: "all" | "manual" | "autoworx";
   searchQuery: string;
 }) {
+  noStore();
   const { page, limit, status, source, searchQuery } = params;
   const offset = (page - 1) * limit;
 
@@ -28,11 +31,19 @@ export async function getPaginatedMaintenanceRecords(params: {
     );
   }
 
-  // 2. Source Filter
-  if (source === "manual") {
-    conditions.push(isNull(maintenanceRecords.autoworxJobId));
-  } else if (source === "autoworx") {
-    conditions.push(isNotNull(maintenanceRecords.autoworxJobId));
+  // 2. Source Filter & Stealth Mode Check
+  const isSyncEnabled = await getSystemSetting("ENABLE_AUTOWORX_SYNC", "true");
+  
+  if (isSyncEnabled !== "true") {
+    // STEALTH MODE: Force filtering to manual only, completely hiding all Autoworx records
+    conditions.push(or(isNull(maintenanceRecords.autoworxJobId), eq(maintenanceRecords.autoworxJobId, "")));
+  } else {
+    // Normal operation
+    if (source === "manual") {
+      conditions.push(or(isNull(maintenanceRecords.autoworxJobId), eq(maintenanceRecords.autoworxJobId, "")));
+    } else if (source === "autoworx") {
+      conditions.push(isNotNull(maintenanceRecords.autoworxJobId));
+    }
   }
 
   // 3. Search Query
@@ -106,7 +117,11 @@ export async function getPaginatedMaintenanceRecords(params: {
 }
 
 export async function getMaintenanceRecords() {
+  noStore();
+  const isSyncEnabled = await getSystemSetting("ENABLE_AUTOWORX_SYNC", "true");
+
   const records = await db.query.maintenanceRecords.findMany({
+    where: isSyncEnabled !== "true" ? or(isNull(maintenanceRecords.autoworxJobId), eq(maintenanceRecords.autoworxJobId, "")) : undefined,
     with: {
       truck: true
     },

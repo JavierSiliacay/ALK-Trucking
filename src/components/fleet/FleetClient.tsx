@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
-import { TrendingUp, TrendingDown, Receipt, Truck as TruckIcon, Calendar, X, FileText, PackageOpen, ChevronDown } from "lucide-react";
+import { TrendingUp, TrendingDown, Receipt, Truck as TruckIcon, Calendar, X, FileText, PackageOpen, ChevronDown, Printer } from "lucide-react";
 import wingvanImg from "../../../public/wingvan.png";
 import canterImg from "../../../public/canter6wheelers.png";
 import forwardImg from "../../../public/forward.png";
@@ -109,19 +109,56 @@ export default function FleetClient({
   const totalFleetExpenses = trucks.reduce((sum, t) => sum + t.stats.totalExpenses, 0);
   const totalFleetNet = trucks.reduce((sum, t) => sum + t.stats.netProfit, 0);
 
+  let formattedDateSelected = 'All Time';
+  if (initialDateRange === 'daily') formattedDateSelected = new Date(initialDay).toLocaleDateString("en-US", { year: 'numeric', month: 'long', day: 'numeric' });
+  else if (initialDateRange === 'monthly') {
+    const d = new Date(initialYear, initialMonth, 1);
+    formattedDateSelected = d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  } else if (initialDateRange === 'yearly') {
+    formattedDateSelected = initialYear.toString();
+  } else if (initialDateRange === 'custom') {
+    const start = new Date(initialCustomStart).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const end = new Date(initialCustomEnd).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    formattedDateSelected = `${start} to ${end}`;
+  }
+
   return (
-    <div className="p-6 max-w-[1440px] mx-auto w-full space-y-6">
+    <div className="p-6 max-w-[1440px] mx-auto w-full space-y-6 print:p-0 print:m-0 print:max-w-none print:w-full print:bg-white">
       
       {/* HEADER & ADVANCED FILTERS */}
-      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <h2 className="font-extrabold text-2xl text-[#00193c] font-manrope">Fleet Performance</h2>
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 border-b border-slate-200 pb-4 print:border-b-2 print:border-black print:pb-2">
+        
+        {/* Print Only Full Header */}
+        <div className="hidden print:flex justify-between items-start w-full mb-3 pb-3 border-b border-slate-200">
+          <div className="flex items-center gap-4">
+            <img src="/alk_logo.jpg" alt="ALK Trucking Logo" className="w-14 h-14 object-contain rounded-md border border-slate-200 shadow-sm" />
+            <div>
+              <h1 className="font-black text-xl text-black uppercase tracking-wider m-0 leading-tight">ALK Trucking Services</h1>
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Fleet Operations</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <h2 className="text-sm font-black uppercase tracking-widest text-black mb-1">Fleet Performance Report</h2>
+            <p className="text-[10px] text-gray-700 font-bold uppercase mb-0.5">As of: {formattedDateSelected}</p>
+            <p className="text-[10px] font-bold uppercase mb-1 flex justify-end gap-1 items-center">
+              <span className="text-gray-700">Status:</span>
+              <span className={initialStatus === 'active' ? 'text-emerald-600' : initialStatus === 'archived' ? 'text-amber-600' : 'text-blue-600'}>
+                {initialStatus === "all" ? "All Status" : initialStatus}
+              </span>
+            </p>
+            <p className="text-[9px] text-gray-400 font-bold uppercase">Printed on: {new Date().toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "numeric", hour12: true })}</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col print:hidden">
+          <h2 className="font-extrabold text-2xl text-[#00193c] font-manrope">Fleet Performance Report</h2>
           <p className="text-[#43474f] text-xs mt-0.5">Detailed monitoring of revenue, expenses, and net profit.</p>
         </div>
         
-        {/* FILTERS UI */}
-        <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-2xl border border-slate-200 shadow-sm flex-wrap">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-2">Filters</span>
+        {/* FILTERS UI & ACTIONS */}
+        <div className="flex items-center gap-3 print:hidden">
+          <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-2xl border border-slate-200 shadow-sm flex-wrap">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider ml-2">Filters</span>
           
           <div className="flex items-center gap-1.5">
             <div className="relative">
@@ -229,28 +266,38 @@ export default function FleetClient({
             )}
 
             {initialDateRange === "custom" && (
-              <div className="flex items-center gap-1.5 ml-1">
+              <>
                 <input
                   type="date"
                   value={initialCustomStart}
                   onChange={(e) => handleFilterChange("customStart", e.target.value)}
-                  className="px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold text-[#00193c] bg-white shadow-sm"
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-[#00193c] focus:ring-2 focus:ring-[#1e3a8a]/20 outline-none cursor-pointer shadow-sm hover:border-slate-300 transition-colors"
                 />
-                <span className="text-xs text-slate-400 font-bold">to</span>
+                <span className="text-slate-400 font-bold text-sm">to</span>
                 <input
                   type="date"
                   value={initialCustomEnd}
                   onChange={(e) => handleFilterChange("customEnd", e.target.value)}
-                  className="px-3 py-2 border border-slate-300 rounded-lg text-xs font-bold text-[#00193c] bg-white shadow-sm"
+                  className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-[#00193c] focus:ring-2 focus:ring-[#1e3a8a]/20 outline-none cursor-pointer shadow-sm hover:border-slate-300 transition-colors"
                 />
-              </div>
+              </>
             )}
           </div>
+          
+          {/* Print Button */}
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-2 bg-[#00193c] hover:bg-blue-900 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors shadow-sm cursor-pointer"
+          >
+            <Printer className="w-4 h-4" />
+            Print Report
+          </button>
         </div>
       </div>
+      </div>
 
-      {/* High Level Fleet Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      {/* High Level Fleet Overview (Screen Only) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 print:hidden">
         <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-100">
           <p className="text-emerald-600 text-xs font-bold uppercase tracking-wide mb-1">Fleet Revenue</p>
           <h3 className="text-3xl font-extrabold text-emerald-700">₱{totalFleetRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</h3>
@@ -265,7 +312,8 @@ export default function FleetClient({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {/* Truck Cards Grid (Screen Only) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 print:hidden">
         {trucks.map(truck => {
           const img = getTruckImage(truck.unit);
           return (
@@ -595,6 +643,76 @@ export default function FleetClient({
           </div>
         </div>
       )}
+
+      {/* Excel Table Layout (Print Only) */}
+      <div className="hidden print:block font-sans text-xs">
+        <table className="w-full border-collapse border border-slate-300" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
+          <thead>
+            <tr className="bg-blue-100 font-bold">
+              <th className="border border-slate-300 p-2 text-left text-slate-800">Unit / Plate No</th>
+              <th className="border border-slate-300 p-2 text-center text-slate-800">Trips</th>
+              <th className="border border-slate-300 p-2 text-right text-slate-800">Revenue (₱)</th>
+              <th className="border border-slate-300 p-2 text-right text-slate-800">Trip Expenses (₱)</th>
+              <th className="border border-slate-300 p-2 text-right text-slate-800">Inventory Supply (₱)</th>
+              <th className="border border-slate-300 p-2 text-right text-slate-800">Maintenance (₱)</th>
+              <th className="border border-slate-300 p-2 text-right text-slate-800">Total Expenses (₱)</th>
+              <th className="border border-slate-300 p-2 text-right font-extrabold text-[#00193c]">Net Profit (₱)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {trucks.map(truck => (
+              <tr key={`print-${truck.id}`} className="hover:bg-slate-50">
+                <td className="border border-slate-300 p-2">
+                  <span className="font-bold text-[#00193c]">{truck.unit}</span>
+                  <span className="block text-[10px] text-slate-500">{truck.plateNo}</span>
+                </td>
+                <td className="border border-slate-300 p-2 text-center text-slate-700">{truck.stats.tripsCount}</td>
+                <td className="border border-slate-300 p-2 text-right text-emerald-700 font-medium">
+                  {truck.stats.revenue.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+                </td>
+                <td className="border border-slate-300 p-2 text-right text-rose-600">
+                  {truck.stats.tripExpenses.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+                </td>
+                <td className="border border-slate-300 p-2 text-right text-rose-600">
+                  {truck.stats.inventoryExpenses.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+                </td>
+                <td className="border border-slate-300 p-2 text-right text-rose-600">
+                  {truck.stats.maintenanceExpenses.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+                </td>
+                <td className="border border-slate-300 p-2 text-right text-rose-700 font-medium">
+                  {truck.stats.totalExpenses.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+                </td>
+                <td className="border border-slate-300 p-2 text-right font-extrabold text-[#00193c]">
+                  {truck.stats.netProfit.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="bg-slate-200 text-lg">
+              <td colSpan={2} className="border border-slate-300 p-4 text-right font-black text-[#00193c] tracking-wide">GRAND TOTAL:</td>
+              <td className="border border-slate-300 p-4 text-right font-black text-emerald-700">
+                {totalFleetRevenue.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+              </td>
+              <td className="border border-slate-300 p-4 text-right font-black text-rose-700">
+                {trucks.reduce((sum, t) => sum + t.stats.tripExpenses, 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+              </td>
+              <td className="border border-slate-300 p-4 text-right font-black text-rose-700">
+                {trucks.reduce((sum, t) => sum + t.stats.inventoryExpenses, 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+              </td>
+              <td className="border border-slate-300 p-4 text-right font-black text-rose-700">
+                {trucks.reduce((sum, t) => sum + t.stats.maintenanceExpenses, 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+              </td>
+              <td className="border border-slate-300 p-4 text-right font-black text-rose-700">
+                {totalFleetExpenses.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+              </td>
+              <td className="border border-slate-300 p-4 text-right font-black text-[#00193c] text-xl bg-blue-50/50">
+                {totalFleetNet.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
 
       {/* Autoworx Detailed Floating Inspector Modal */}
       <TripInspectorModal

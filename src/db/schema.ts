@@ -148,3 +148,8 @@ export const maintenanceRecordsRelations = relations(maintenanceRecords, ({ one 
 export const trucksRelations = relations(trucks, ({ many }) => ({
   maintenance: many(maintenanceRecords),
 }));
+
+export const systemSettings = pgTable('system_settings', {
+  key: varchar('key', { length: 255 }).primaryKey(),
+  value: varchar('value', { length: 255 }).notNull(),
+});

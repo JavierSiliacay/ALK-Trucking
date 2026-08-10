@@ -9,7 +9,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#f7fafd] print:h-auto print:overflow-visible">
+    <div className="flex h-screen overflow-hidden bg-[#f7fafd] print:bg-white print:h-auto print:overflow-visible print:w-full print:block">
       {/* Mobile Backdrop */}
       {isMobileMenuOpen && (
         <div
@@ -37,7 +37,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden w-full relative min-w-0 print:h-auto print:overflow-visible">
+      <div className="flex-1 flex flex-col overflow-hidden w-full relative min-w-0 print:bg-white print:h-auto print:overflow-visible print:block">
         {/* Sticky Header */}
         <div className="sticky top-0 z-30 bg-white border-b border-[#c4c6d1] flex items-center shrink-0 no-print">
           <button
@@ -52,8 +52,8 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         </div>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 print:overflow-visible print:h-auto">
-          <div className="max-w-[1440px] mx-auto w-full">
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 print:p-0 print:bg-white print:overflow-visible print:h-auto print:block">
+          <div className="max-w-[1440px] mx-auto w-full print:max-w-none print:w-full print:m-0 print:p-0">
             {children}
           </div>
         </main>

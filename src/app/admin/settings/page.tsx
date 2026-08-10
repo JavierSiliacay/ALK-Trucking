@@ -3,9 +3,10 @@
 import React, { useState, useEffect } from "react";
 import { PageShell } from "@/components/ui/PageShell";
 import { useTrips } from "@/lib/trips-store";
-import { UserCheck, Users, Truck, Plus, Search, Archive, AlertTriangle, ShieldCheck, XCircle, Sparkles } from "lucide-react";
+import { UserCheck, Users, Truck, Plus, Search, Archive, AlertTriangle, ShieldCheck, XCircle, Sparkles, Link as LinkIcon, Lock } from "lucide-react";
 import { addDriver, archiveDriver, addHelper, archiveHelper, addTruck, archiveTruck } from "@/actions/master";
 import { getAuthorizedUsers, addAuthorizedUser, revokeUserAccess } from "@/actions/users";
+import { getSystemSetting, updateSystemSetting } from "@/actions/settings";
 import { toast } from "sonner";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
@@ -17,7 +18,7 @@ export default function SettingsPage() {
   const { masterData, isLoaded } = useTrips();
   const { data: session } = useSession();
   const isDeveloper = session?.user?.email === "siliacay.javier@gmail.com";
-  const [activeTab, setActiveTab] = useState<"drivers" | "helpers" | "trucks" | "access">("drivers");
+  const [activeTab, setActiveTab] = useState<"drivers" | "helpers" | "trucks" | "access" | "integrations">("drivers");
   const [searchQuery, setSearchQuery] = useState("");
 
   // Modal states
@@ -25,6 +26,7 @@ export default function SettingsPage() {
   const [isHelperModalOpen, setIsHelperModalOpen] = useState(false);
   const [isTruckModalOpen, setIsTruckModalOpen] = useState(false);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [showDeveloperModal, setShowDeveloperModal] = useState(false);
 
   // Auth states
   const [authorizedUsers, setAuthorizedUsers] = useState<any[]>([]);
@@ -32,11 +34,24 @@ export default function SettingsPage() {
   const [newAuthEmail, setNewAuthEmail] = useState("");
   const [newAuthName, setNewAuthName] = useState("");
 
+  const [isAutoworxSyncEnabled, setIsAutoworxSyncEnabled] = useState(false);
+  const [isSettingLoading, setIsSettingLoading] = useState(false);
+
   useEffect(() => {
     if (activeTab === "access") {
       loadAuthorizedUsers();
     }
+    if (activeTab === "integrations") {
+      loadIntegrationSettings();
+    }
   }, [activeTab]);
+
+  const loadIntegrationSettings = async () => {
+    setIsSettingLoading(true);
+    const setting = await getSystemSetting("ENABLE_AUTOWORX_SYNC", "true");
+    setIsAutoworxSyncEnabled(setting === "true");
+    setIsSettingLoading(false);
+  };
 
   const loadAuthorizedUsers = async () => {
     setIsAuthLoading(true);
@@ -141,6 +156,30 @@ export default function SettingsPage() {
     }
   };
 
+  const handleToggleSync = async () => {
+    if (!isDeveloper) {
+      setShowDeveloperModal(true);
+      return;
+    }
+    
+    const newValue = !isAutoworxSyncEnabled;
+    const actionText = newValue ? "ENABLE" : "DISABLE";
+    if (!window.confirm(`Are you sure you want to ${actionText} Cross-System Sync?`)) {
+      return;
+    }
+    
+    setIsSettingLoading(true);
+    const res = await updateSystemSetting("ENABLE_AUTOWORX_SYNC", newValue ? "true" : "false");
+    
+    if (res.success) {
+      setIsAutoworxSyncEnabled(newValue);
+      toast.success(newValue ? "Autoworx Sync Enabled!" : "Autoworx Sync Disabled - Stealth Mode Active!");
+    } else {
+      toast.error("Failed to update setting");
+    }
+    setIsSettingLoading(false);
+  };
+
   // Filtering
   const filteredDrivers = masterData.drivers.filter(d => d.toLowerCase().includes(searchQuery.toLowerCase()));
   const filteredHelpers = masterData.helpers.filter(h => h.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -205,11 +244,25 @@ export default function SettingsPage() {
             <p className="text-xs text-slate-500 font-bold">Authorized Users</p>
           </div>
         </div>
+
+        <div 
+          onClick={() => setActiveTab("integrations")}
+          className={`p-6 rounded-2xl cursor-pointer border-2 transition-all flex items-center gap-4 ${activeTab === "integrations" ? "bg-purple-50 border-purple-800 shadow-md" : "bg-white border-slate-200 hover:border-slate-300"}`}
+        >
+          <div className={`p-3 rounded-xl ${activeTab === "integrations" ? "bg-purple-800 text-white" : "bg-slate-100 text-slate-500"}`}>
+            <LinkIcon className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="font-extrabold text-slate-900">Integrations</h3>
+            <p className="text-xs text-slate-500 font-bold">Cross-System Sync</p>
+          </div>
+        </div>
       </div>
 
       {/* Main Content Area */}
       <div className="bg-white border border-slate-200 rounded-3xl shadow-sm overflow-hidden">
         {/* Header bar with Search and Add Button */}
+        {activeTab !== "integrations" && (
         <div className="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="relative max-w-sm w-full">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -234,6 +287,7 @@ export default function SettingsPage() {
             <span>Add New {activeTab === "drivers" ? "Driver" : activeTab === "helpers" ? "Helper" : activeTab === "trucks" ? "Truck" : "User"}</span>
           </button>
         </div>
+        )}
 
         {/* List Grid */}
         <div className="p-4 sm:p-6 bg-slate-50/50 min-h-[400px]">
@@ -400,6 +454,43 @@ export default function SettingsPage() {
                       )}
                     </tbody>
                   </table>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* INTEGRATIONS */}
+          {activeTab === "integrations" && (
+            <div className="space-y-6">
+              {isSettingLoading ? (
+                <div className="py-10 text-center text-slate-400 text-sm font-bold">Loading configurations...</div>
+              ) : (
+                <div className="bg-white border border-slate-200 p-6 rounded-2xl flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
+                  <div className="max-w-2xl">
+                    <h3 className="font-black text-lg text-slate-900 mb-2 flex items-center gap-2">
+                      <LinkIcon className="w-5 h-5 text-purple-600" />
+                      Autoworx Cross-System Sync
+                    </h3>
+                    <p className="text-sm text-slate-600 font-medium leading-relaxed mb-4">
+                      When enabled, ALK Trucking will automatically accept, parse, and synchronize fleet repair data from the Autoworx Repair Shop dashboard in real-time. This eliminates manual data entry for job orders, repair statuses, and detailed costing.
+                    </p>
+                    <div className="flex gap-2 items-center">
+                      <span className={`px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-md border ${isAutoworxSyncEnabled ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-rose-50 text-rose-700 border-rose-200"}`}>
+                        {isAutoworxSyncEnabled ? "Currently Enabled" : "Stealth Mode Active"}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Toggle Switch */}
+                  <button 
+                    onClick={handleToggleSync}
+                    className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${isAutoworxSyncEnabled ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                  >
+                    <span className="sr-only">Toggle Autoworx Sync</span>
+                    <span
+                      className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${isAutoworxSyncEnabled ? 'translate-x-7' : 'translate-x-1'}`}
+                    />
+                  </button>
                 </div>
               )}
             </div>
@@ -597,6 +688,29 @@ export default function SettingsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Developer Restricted Modal */}
+      {showDeveloperModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-sm rounded-3xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-8 flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mb-6 shadow-sm border border-rose-200">
+                <Lock className="w-8 h-8" />
+              </div>
+              <h2 className="font-black text-slate-900 text-xl mb-3 tracking-tight">ACCESS DENIED</h2>
+              <p className="text-slate-600 text-sm font-bold mb-8 uppercase tracking-widest text-rose-600">
+                ONLY THE DEVELOPER CAN ENABLE IT
+              </p>
+              <button
+                onClick={() => setShowDeveloperModal(false)}
+                className="w-full px-5 py-3 bg-slate-900 text-white font-extrabold text-sm rounded-xl hover:bg-slate-800 transition-colors shadow-md"
+              >
+                Understood
+              </button>
+            </div>
           </div>
         </div>
       )}

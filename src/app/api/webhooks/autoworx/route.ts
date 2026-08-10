@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { maintenanceRecords, trucks } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { getSystemSetting } from "@/actions/settings";
 
 export async function POST(request: Request) {
   try {
@@ -15,6 +16,13 @@ export async function POST(request: Request) {
     
     if (authHeader !== `Bearer ${secret}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    
+    // Stealth Mode Check: If disabled, return 200 OK to trick Autoworx into thinking it succeeded, but DO NOTHING here.
+    const isSyncEnabled = await getSystemSetting("ENABLE_AUTOWORX_SYNC", "true");
+    if (isSyncEnabled !== "true") {
+      console.log("Stealth Mode: Ignoring incoming Autoworx webhook payload.");
+      return NextResponse.json({ success: true, message: "Stealth mode active" }, { status: 200 });
     }
 
     // 2. Parse Payload
@@ -113,6 +121,13 @@ export async function DELETE(request: Request) {
     
     if (authHeader !== `Bearer ${secret}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Stealth Mode Check
+    const isSyncEnabled = await getSystemSetting("ENABLE_AUTOWORX_SYNC", "true");
+    if (isSyncEnabled !== "true") {
+      console.log("Stealth Mode: Ignoring Autoworx DELETE webhook.");
+      return NextResponse.json({ success: true, message: "Stealth mode active" }, { status: 200 });
     }
 
     const { searchParams } = new URL(request.url);

@@ -2,9 +2,14 @@
 
 import { db } from "@/db";
 import { trucks, trips, expenses, inventoryTransactions, maintenanceRecords } from "@/db/schema";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { eq, and, gte, lte, isNull, or } from "drizzle-orm";
+import { getSystemSetting } from "@/actions/settings";
+import { unstable_noStore as noStore } from "next/cache";
 
 export async function getFleetPerformance(startDate?: Date, endDate?: Date, status: string = "active") {
+  noStore();
+  
+  const isSyncEnabled = await getSystemSetting("ENABLE_AUTOWORX_SYNC", "true");
   // Fetch trucks based on status filter
   const allTrucks = await db.query.trucks.findMany({
     where: status === "active" ? eq(trucks.isActive, true) : status === "archived" ? eq(trucks.isActive, false) : undefined,
@@ -25,7 +30,10 @@ export async function getFleetPerformance(startDate?: Date, endDate?: Date, stat
   });
 
   const allMaintenance = await db.query.maintenanceRecords.findMany({
-    where: eq(maintenanceRecords.status, "Completed"),
+    where: and(
+      eq(maintenanceRecords.status, "Completed"),
+      isSyncEnabled !== "true" ? or(isNull(maintenanceRecords.autoworxJobId), eq(maintenanceRecords.autoworxJobId, "")) : undefined
+    )
   });
 
   // Filter trips and inventory by date if provided

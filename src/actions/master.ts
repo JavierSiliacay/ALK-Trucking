@@ -2,14 +2,14 @@
 
 import { db } from "@/db";
 import { drivers, helpers, trucks } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, or, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export async function getMasterData() {
   const [allDrivers, allHelpers, allTrucks] = await Promise.all([
     db.query.drivers.findMany({ where: eq(drivers.isActive, true), orderBy: (drivers, { asc }) => [asc(drivers.name)] }),
-    db.query.helpers.findMany({ where: eq(helpers.isActive, true), orderBy: (helpers, { asc }) => [asc(helpers.name)] }),
-    db.query.trucks.findMany({ where: eq(trucks.isActive, true), orderBy: (trucks, { asc }) => [asc(trucks.unit)] }),
+    db.query.helpers.findMany({ where: or(eq(helpers.isActive, true), isNull(helpers.isActive)), orderBy: (helpers, { asc }) => [asc(helpers.name)] }),
+    db.query.trucks.findMany({ where: or(eq(trucks.isActive, true), isNull(trucks.isActive)), orderBy: (trucks, { asc }) => [asc(trucks.unit)] }),
   ]);
 
   return {
