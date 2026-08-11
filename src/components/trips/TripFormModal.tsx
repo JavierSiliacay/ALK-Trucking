@@ -22,7 +22,7 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
   const uniqueOrigins = Array.from(new Set(trips.map((t) => t.origin).filter(Boolean)));
 
   const [seqNo, setSeqNo] = useState("");
-  const [dateOfTravel, setDateOfTravel] = useState(new Date().toISOString().split("T")[0]);
+  const [dateOfTravel, setDateOfTravel] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [owner, setOwner] = useState("ALK Trucking");
   const [unit, setUnit] = useState("");
@@ -36,7 +36,7 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
   const [distance, setDistance] = useState("310 km");
 
   const [gatePassNo, setGatePassNo] = useState("");
-  const [gatePassDate, setGatePassDate] = useState(new Date().toISOString().split("T")[0]);
+  const [gatePassDate, setGatePassDate] = useState("");
   const [rate, setRate] = useState<number | "">(20000);
   const [notes, setNotes] = useState("");
 
@@ -65,10 +65,9 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
       setNotes(initialTrip.notes || "");
       setExpenses(initialTrip.expenses || []);
     } else {
-      const today = new Date().toISOString().split("T")[0];
       
       setSeqNo("");
-      setDateOfTravel(today);
+      setDateOfTravel("");
       setCustomerName("");
       setOwner("ALK Trucking");
 
@@ -82,7 +81,7 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
       setDestination("");
       setDistance("");
       setGatePassNo("");
-      setGatePassDate(today);
+      setGatePassDate("");
       setRate("");
       setNotes("");
       setExpenses([]);
@@ -249,7 +248,8 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
                   required
                   value={dateOfTravel}
                   onChange={(e) => setDateOfTravel(e.target.value)}
-                  className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-sm text-gray-900 font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                  onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                  className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-sm text-gray-900 font-medium focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
                 />
               </div>
 
@@ -308,7 +308,8 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
                     required
                     value={gatePassDate}
                     onChange={(e) => setGatePassDate(e.target.value)}
-                    className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-sm text-gray-900 font-medium focus:ring-2 focus:ring-blue-500 outline-none"
+                    onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                    className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-sm text-gray-900 font-medium focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer"
                   />
                 </div>
               </div>

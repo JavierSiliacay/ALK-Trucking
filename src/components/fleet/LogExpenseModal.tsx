@@ -22,7 +22,7 @@ export function LogExpenseModal({ isOpen, onClose, onSuccess, editRecord }: LogE
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
   const [cost, setCost] = useState("");
-  const [dateIncurred, setDateIncurred] = useState(new Date().toISOString().split('T')[0]);
+  const [dateIncurred, setDateIncurred] = useState("");
 
   useEffect(() => {
     if (isOpen) {
@@ -32,14 +32,14 @@ export function LogExpenseModal({ isOpen, onClose, onSuccess, editRecord }: LogE
         setCategory(editRecord.category || "");
         setDescription(editRecord.description || "");
         setCost(editRecord.cost ? Number(editRecord.cost).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "");
-        setDateIncurred(editRecord.dateIncurred ? new Date(editRecord.dateIncurred).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+        setDateIncurred(editRecord.dateIncurred ? new Date(editRecord.dateIncurred).toISOString().split('T')[0] : "");
       } else {
         // Reset form
         setTruckId("");
         setCategory("");
         setDescription("");
         setCost("");
-        setDateIncurred(new Date().toISOString().split('T')[0]);
+        setDateIncurred("");
       }
     }
   }, [isOpen, editRecord]);
@@ -58,8 +58,8 @@ export function LogExpenseModal({ isOpen, onClose, onSuccess, editRecord }: LogE
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description || !cost) {
-      toast.error("Description and cost are required");
+    if (!dateIncurred || !description || !cost) {
+      toast.error("Date, Description, and Cost are required");
       return;
     }
 
@@ -131,12 +131,14 @@ export function LogExpenseModal({ isOpen, onClose, onSuccess, editRecord }: LogE
             
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Date Incurred</label>
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wide">Date Incurred <span className="text-rose-500">*</span></label>
                 <input 
                   type="date" 
+                  required
                   value={dateIncurred}
                   onChange={(e) => setDateIncurred(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all font-medium"
+                  onClick={(e) => (e.target as HTMLInputElement).showPicker?.()}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all font-medium cursor-pointer"
                 />
               </div>
 

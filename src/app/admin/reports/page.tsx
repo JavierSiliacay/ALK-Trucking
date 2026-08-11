@@ -88,28 +88,30 @@ export default function ReportsPage() {
   const [customStartDate, setCustomStartDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
   const [customEndDate, setCustomEndDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
 
-  const { availableMonths, availableYears } = useMemo(() => {
-    const monthsMap = new Map<string, string>();
-    const yearsSet = new Set<string>();
+  const { availableYears } = useMemo(() => {
+    let current = new Date().getFullYear();
+    let minYear = current - 4; // Show at least 5 years (current - 4 to current)
+    let maxYear = current;
 
     trips.forEach((t: Trip) => {
       const dateStr = t.completedAt ? new Date(t.completedAt).toISOString() : t.dateOfTravel;
       const d = new Date(dateStr);
       if (!isNaN(d.getTime())) {
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        monthsMap.set(key, d.toLocaleDateString("en-US", { month: "long", year: "numeric" }));
-        yearsSet.add(d.getFullYear().toString());
+        const y = d.getFullYear();
+        if (y < minYear) minYear = y;
+        if (y > maxYear) maxYear = y;
       }
     });
 
-    const d = new Date();
-    const currentKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    monthsMap.set(currentKey, d.toLocaleDateString("en-US", { month: "long", year: "numeric" }));
-    yearsSet.add(d.getFullYear().toString());
+    const yearsSet = new Set<string>();
+    for (let y = minYear; y <= maxYear; y++) {
+      yearsSet.add(y.toString());
+    }
+
+    const availableYearsList = Array.from(yearsSet).sort((a, b) => b.localeCompare(a));
 
     return {
-      availableMonths: Array.from(monthsMap.entries()).sort((a, b) => b[0].localeCompare(a[0])),
-      availableYears: Array.from(yearsSet).sort((a, b) => b.localeCompare(a))
+      availableYears: availableYearsList
     };
   }, [trips]);
 
@@ -354,11 +356,33 @@ export default function ReportsPage() {
               <input type="week" value={selectedWeek} onChange={(e) => setSelectedWeek(e.target.value)} className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white" />
             )}
             {reportPeriod === "monthly" && (
-              <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)} className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white">
-                {availableMonths.map(([val, label]) => (
-                  <option key={val} value={val}>{label}</option>
-                ))}
-              </select>
+              <div className="flex items-center gap-1">
+                <select 
+                  value={selectedMonth.split('-')[1]} 
+                  onChange={(e) => setSelectedMonth(`${selectedMonth.split('-')[0]}-${e.target.value}`)} 
+                  className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white outline-none cursor-pointer"
+                >
+                  <option value="01">January</option>
+                  <option value="02">February</option>
+                  <option value="03">March</option>
+                  <option value="04">April</option>
+                  <option value="05">May</option>
+                  <option value="06">June</option>
+                  <option value="07">July</option>
+                  <option value="08">August</option>
+                  <option value="09">September</option>
+                  <option value="10">October</option>
+                  <option value="11">November</option>
+                  <option value="12">December</option>
+                </select>
+                <select 
+                  value={selectedMonth.split('-')[0]} 
+                  onChange={(e) => setSelectedMonth(`${e.target.value}-${selectedMonth.split('-')[1]}`)} 
+                  className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white outline-none cursor-pointer"
+                >
+                  {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
             )}
             {reportPeriod === "yearly" && (
               <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white">
