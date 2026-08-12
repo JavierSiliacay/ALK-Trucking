@@ -138,7 +138,7 @@ export default function DigitalPaperForm({ trip, onClose }: DigitalPaperFormProp
             <div className="flex items-baseline">
               <span className="font-bold w-40 uppercase text-slate-800">ROUTE (ORIGIN-DEST):</span>
               <span className="font-bold text-slate-900 border-b border-dashed border-slate-400 flex-1 px-1">
-                {trip.origin ? `${trip.origin} - ${trip.destination}` : trip.destination || "—"}
+                {trip.origin ? `${trip.origin} - ${trip.destination}` : trip.destination || "—"} {trip.distance && `(${trip.distance})`}
               </span>
             </div>
             <div className="flex items-baseline">

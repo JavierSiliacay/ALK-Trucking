@@ -202,7 +202,10 @@ export default function TripsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-5 font-bold text-[#181c1e]">
-                      {t.origin || "CDO"} → {t.destination}
+                      <div className="flex flex-col">
+                        <span>{t.origin || "CDO"} → {t.destination}</span>
+                        {t.distance && <span className="text-[11px] font-mono text-slate-500 font-normal">{t.distance}</span>}
+                      </div>
                     </td>
                     <td className="px-6 py-5 font-semibold text-[#181c1e]">{t.customerName}</td>
                     <td className="px-6 py-5">
@@ -304,6 +307,12 @@ export default function TripsPage() {
                       <td className="px-6 py-5 font-bold text-[#181c1e]">{t.unit} ({t.plateNo})</td>
                       <td className="px-6 py-5 font-semibold text-[#181c1e]">{t.driver}</td>
                       <td className="px-6 py-5 text-[#181c1e]">{t.customerName}</td>
+                      <td className="px-6 py-5 text-[#181c1e]">
+                        <div className="flex flex-col">
+                          <span className="font-bold">{t.origin || "CDO"} → {t.destination}</span>
+                          {t.distance && <span className="text-[11px] font-mono text-slate-500">{t.distance}</span>}
+                        </div>
+                      </td>
                       <td className="px-6 py-5 text-right font-mono font-extrabold text-rose-700">₱{totalExpense.toLocaleString()}</td>
                       <td className="px-6 py-5 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-2">

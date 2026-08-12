@@ -99,7 +99,7 @@ export default function TripInspectorModal({ trip, onClose, onPrint }: TripInspe
                 <span>Customer & Route Details</span>
               </div>
               <p><span className="text-gray-500 font-medium">Customer:</span> <strong>{trip.customerName}</strong></p>
-              <p><span className="text-gray-500 font-medium">Route:</span> <strong>{trip.origin || "CDO"} → {trip.destination}</strong></p>
+              <p><span className="text-gray-500 font-medium">Route:</span> <strong>{trip.origin || "CDO"} → {trip.destination} {trip.distance && `(${trip.distance})`}</strong></p>
               <p><span className="text-gray-500 font-medium">Date:</span> <strong>{compDate}</strong></p>
               <p><span className="text-gray-500 font-medium">Status:</span> 
                 <span className={`ml-1.5 px-2 py-0.5 text-[9px] font-extrabold rounded uppercase ${

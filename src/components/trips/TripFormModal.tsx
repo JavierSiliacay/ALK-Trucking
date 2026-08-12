@@ -2,8 +2,18 @@
 
 import React, { useState, useEffect } from "react";
 import { Plus, Trash2, Undo, Check, Loader2, X } from "lucide-react";
+import dynamic from "next/dynamic";
 import { Trip, ExpenseItem, useTrips, DEFAULT_EXPENSE_CATEGORIES } from "@/lib/trips-store";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
+
+const DynamicRouteMap = dynamic(() => import("./RouteMap"), { 
+  ssr: false, 
+  loading: () => (
+    <div className="w-full h-full bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-400 rounded">
+      Map Loading...
+    </div>
+  )
+});
 
 interface TripFormModalProps {
   isOpen: boolean;
@@ -43,6 +53,10 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
   const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
   const [lastDeletedExpense, setLastDeletedExpense] = useState<{ expense: ExpenseItem; index: number } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
+  const [routeGeometry, setRouteGeometry] = useState<[number, number][]>([]);
+  const [alternativeRoutes, setAlternativeRoutes] = useState<any[]>([]);
+  const [selectedRouteIndex, setSelectedRouteIndex] = useState(0);
 
   useEffect(() => {
     setLastDeletedExpense(null);
@@ -85,6 +99,8 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
       setRate("");
       setNotes("");
       setExpenses([]);
+      setAlternativeRoutes([]);
+      setSelectedRouteIndex(0);
     }
   }, [initialTrip, isOpen, masterData]);
 
@@ -136,6 +152,71 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
     updated.splice(Math.min(index, updated.length), 0, expense);
     setExpenses(updated);
     setLastDeletedExpense(null);
+  };
+
+  const CITY_ALIASES: Record<string, string> = {
+    "CDO": "Cagayan de Oro",
+    "GENSAN": "General Santos City",
+    "DVO": "Davao City",
+    "ZAMBO": "Zamboanga City",
+    "BUTUAN": "Butuan City",
+    "ILIGAN": "Iligan City",
+    "SURIGAO": "Surigao City",
+  };
+
+  const getCoordinates = async (city: string) => {
+    const normalizedCity = CITY_ALIASES[city.toUpperCase()] || city;
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(normalizedCity)},+Philippines&format=json&limit=1`);
+    const data = await res.json();
+    if (data && data.length > 0) {
+      return { lat: data[0].lat, lon: data[0].lon };
+    }
+    throw new Error(`Location not found: ${city}`);
+  };
+
+  const applyRoute = (route: any) => {
+    const distKm = (route.distance / 1000).toFixed(1);
+    setDistance(`${distKm} km`);
+    
+    // Extract geometry, OSRM GeoJSON is [lon, lat], Leaflet wants [lat, lon]
+    if (route.geometry && route.geometry.coordinates) {
+      const coords = route.geometry.coordinates.map((c: [number, number]) => [c[1], c[0]]);
+      setRouteGeometry(coords);
+    }
+  };
+
+  const calculateDistance = async () => {
+    if (!origin || !destination) {
+      alert("Please enter both origin and destination.");
+      return;
+    }
+    setIsCalculatingDistance(true);
+    try {
+      const p1 = await getCoordinates(origin);
+      const p2 = await getCoordinates(destination);
+
+      const res = await fetch(`/api/routing?originLon=${p1.lon}&originLat=${p1.lat}&destLon=${p2.lon}&destLat=${p2.lat}`);
+      
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to calculate route");
+      }
+      
+      const data = await res.json();
+
+      if (data.routes && data.routes.length > 0) {
+        setAlternativeRoutes(data.routes);
+        setSelectedRouteIndex(0);
+        applyRoute(data.routes[0]);
+      } else {
+        throw new Error("Route not found between these cities");
+      }
+    } catch (error: any) {
+      console.error(error);
+      alert(error.message || "Failed to calculate distance");
+    } finally {
+      setIsCalculatingDistance(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -314,11 +395,22 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-gray-700 font-semibold text-xs uppercase block text-center">
-                  Destination Route <span className="text-red-500">*</span>
-                </label>
-                <div className="flex items-center gap-2">
+              <div className="space-y-1 relative">
+                <div className="flex justify-between items-end mb-1">
+                  <label className="text-gray-700 font-semibold text-xs uppercase block">
+                    Route & Distance <span className="text-red-500">*</span>
+                  </label>
+                  <button 
+                    type="button" 
+                    onClick={calculateDistance} 
+                    disabled={isCalculatingDistance}
+                    className="text-[10px] bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded font-bold hover:bg-blue-100 disabled:opacity-50 transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    {isCalculatingDistance ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                    {isCalculatingDistance ? 'CALCULATING...' : 'CALCULATE DISTANCE'}
+                  </button>
+                </div>
+                <div className="flex items-center gap-1.5">
                   <input
                     type="text"
                     required
@@ -326,9 +418,9 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
                     placeholder="e.g. CDO"
                     value={origin}
                     onChange={(e) => setOrigin(e.target.value)}
-                    className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-sm font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none text-center"
+                    className="w-full h-9 px-2 bg-white border border-gray-300 rounded text-sm font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none text-center uppercase"
                   />
-                  <span className="text-gray-400 font-bold">→</span>
+                  <span className="text-gray-400 font-bold text-sm">→</span>
                   <input
                     type="text"
                     required
@@ -336,9 +428,39 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
                     placeholder="e.g. SURIGAO"
                     value={destination}
                     onChange={(e) => setDestination(e.target.value)}
-                    className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-sm font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none text-center"
+                    className="w-full h-9 px-2 bg-white border border-gray-300 rounded text-sm font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none text-center uppercase"
+                  />
+                  <input
+                    type="text"
+                    required
+                    placeholder="0 km"
+                    value={distance}
+                    onChange={(e) => setDistance(e.target.value)}
+                    className="w-24 h-9 px-2 bg-white border border-gray-300 rounded text-sm font-bold text-blue-700 focus:ring-2 focus:ring-blue-500 outline-none text-center shrink-0"
+                    title="Distance in km"
                   />
                 </div>
+                {alternativeRoutes.length > 1 && (
+                  <div className="flex gap-2 mt-2">
+                    {alternativeRoutes.map((route, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setSelectedRouteIndex(idx);
+                          applyRoute(route);
+                        }}
+                        className={`px-2 py-1 text-[10px] font-bold rounded border transition-colors cursor-pointer ${
+                          selectedRouteIndex === idx
+                            ? "bg-blue-100 text-blue-800 border-blue-300 shadow-sm"
+                            : "bg-gray-50 text-gray-500 border-gray-200 hover:bg-gray-100"
+                        }`}
+                      >
+                        Route {idx + 1} ({(route.distance / 1000).toFixed(1)} km)
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <datalist id="origin-list">
                   {uniqueOrigins.map((o) => <option key={o} value={o} />)}
                 </datalist>
@@ -461,6 +583,17 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
                   />
                 </div>
               </div>
+              
+              {/* Map Visualization Area */}
+              <div className="w-full h-[180px] pt-1">
+                <DynamicRouteMap routeGeometry={routeGeometry} />
+              </div>
+              
+              {origin && destination && (
+                <div className="text-[10px] text-gray-500 text-center italic pt-1">
+                  * For accurate distance (km) for this trip, <a href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">click here to verify in Google Maps</a>.
+                </div>
+              )}
             </div>
 
           </div>
