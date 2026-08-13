@@ -314,417 +314,421 @@ export default function ReportsPage() {
   else if (reportPeriod === 'custom') formattedDateSelected = `${format(parseISO(customStartDate), "MMM d, yyyy")} to ${format(parseISO(customEndDate), "MMM d, yyyy")}`;
 
   return (
-    <div className="p-4 sm:p-6 max-w-[1440px] mx-auto w-full space-y-6 bg-gray-50 min-h-screen print:bg-white print:p-0 print:space-y-0 print:max-w-none print:m-0">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200 print:hidden relative z-20">
-        <div>
-          <h1 className="text-2xl font-black uppercase tracking-tight text-gray-900">Reports & Expenses</h1>
-          <p className="text-sm text-gray-500 font-medium mt-1">Monitor and manage fleet expenses.</p>
-        </div>
+    <>
+      <div className={`p-4 sm:p-6 max-w-[1440px] mx-auto w-full space-y-6 bg-gray-50 min-h-screen ${viewingPaperTrip ? 'print:hidden' : 'print:bg-white print:p-0 print:space-y-0 print:max-w-none print:m-0'}`}>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200 print:hidden relative z-20">
+          <div>
+            <h1 className="text-2xl font-black uppercase tracking-tight text-gray-900">Reports & Expenses</h1>
+            <p className="text-sm text-gray-500 font-medium mt-1">Monitor and manage fleet expenses.</p>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-gray-200">
-            <select
-              value={reportStatus}
-              onChange={(e) => setReportStatus(e.target.value)}
-              className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white outline-none cursor-pointer"
-            >
-              <option value="All">All Status</option>
-              <option value="Active">Active</option>
-              <option value="Completed">Completed</option>
-            </select>
-            
-            <div className="w-px h-4 bg-gray-300 mx-1"></div>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-gray-200">
+              <select
+                value={reportStatus}
+                onChange={(e) => setReportStatus(e.target.value)}
+                className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white outline-none cursor-pointer"
+              >
+                <option value="All">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Completed">Completed</option>
+              </select>
+              
+              <div className="w-px h-4 bg-gray-300 mx-1"></div>
 
-            <CalendarIcon className="text-gray-500 w-4 h-4" />
-            <select
-              value={reportPeriod}
-              onChange={(e) => setReportPeriod(e.target.value as ReportPeriod)}
-              className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white outline-none cursor-pointer"
-            >
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-              <option value="yearly">Yearly</option>
-              <option value="overall">Overall</option>
-              <option value="custom">Custom Range</option>
-            </select>
+              <CalendarIcon className="text-gray-500 w-4 h-4" />
+              <select
+                value={reportPeriod}
+                onChange={(e) => setReportPeriod(e.target.value as ReportPeriod)}
+                className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white outline-none cursor-pointer"
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+                <option value="overall">Overall</option>
+                <option value="custom">Custom Range</option>
+              </select>
 
-            {reportPeriod === "daily" && (
-              <input type="date" value={selectedDay} onChange={(e) => setSelectedDay(e.target.value)} className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white" />
-            )}
-            {reportPeriod === "weekly" && (
-              <input type="week" value={selectedWeek} onChange={(e) => setSelectedWeek(e.target.value)} className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white" />
-            )}
-            {reportPeriod === "monthly" && (
-              <div className="flex items-center gap-1">
-                <select 
-                  value={selectedMonth.split('-')[1]} 
-                  onChange={(e) => setSelectedMonth(`${selectedMonth.split('-')[0]}-${e.target.value}`)} 
-                  className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white outline-none cursor-pointer"
-                >
-                  <option value="01">January</option>
-                  <option value="02">February</option>
-                  <option value="03">March</option>
-                  <option value="04">April</option>
-                  <option value="05">May</option>
-                  <option value="06">June</option>
-                  <option value="07">July</option>
-                  <option value="08">August</option>
-                  <option value="09">September</option>
-                  <option value="10">October</option>
-                  <option value="11">November</option>
-                  <option value="12">December</option>
-                </select>
-                <select 
-                  value={selectedMonth.split('-')[0]} 
-                  onChange={(e) => setSelectedMonth(`${e.target.value}-${selectedMonth.split('-')[1]}`)} 
-                  className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white outline-none cursor-pointer"
-                >
+              {reportPeriod === "daily" && (
+                <input type="date" value={selectedDay} onChange={(e) => setSelectedDay(e.target.value)} className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white" />
+              )}
+              {reportPeriod === "weekly" && (
+                <input type="week" value={selectedWeek} onChange={(e) => setSelectedWeek(e.target.value)} className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white" />
+              )}
+              {reportPeriod === "monthly" && (
+                <div className="flex items-center gap-1">
+                  <select 
+                    value={selectedMonth.split('-')[1]} 
+                    onChange={(e) => setSelectedMonth(`${selectedMonth.split('-')[0]}-${e.target.value}`)} 
+                    className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white outline-none cursor-pointer"
+                  >
+                    <option value="01">January</option>
+                    <option value="02">February</option>
+                    <option value="03">March</option>
+                    <option value="04">April</option>
+                    <option value="05">May</option>
+                    <option value="06">June</option>
+                    <option value="07">July</option>
+                    <option value="08">August</option>
+                    <option value="09">September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+                  </select>
+                  <select 
+                    value={selectedMonth.split('-')[0]} 
+                    onChange={(e) => setSelectedMonth(`${e.target.value}-${selectedMonth.split('-')[1]}`)} 
+                    className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white outline-none cursor-pointer"
+                  >
+                    {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                </div>
+              )}
+              {reportPeriod === "yearly" && (
+                <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white">
+                  <option value="all">All Years</option>
                   {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
-              </div>
-            )}
-            {reportPeriod === "yearly" && (
-              <select value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white">
-                <option value="all">All Years</option>
-                {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
-              </select>
-            )}
-            {reportPeriod === "custom" && (
-              <div className="flex items-center gap-1">
-                <input type="date" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} className="px-2 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white" />
-                <span className="text-xs text-gray-400 font-bold">to</span>
-                <input type="date" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} className="px-2 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white" />
-              </div>
-            )}
-          </div>
-
-          <button onClick={() => window.print()} className="flex items-center justify-center bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 h-9 px-3 rounded-md text-sm font-semibold transition-colors">
-            <Printer className="w-4 h-4 mr-2" /> Print PDF
-          </button>
-        </div>
-      </div>
-
-      <div className="flex flex-col md:flex-row gap-3 items-center bg-white p-3 rounded-lg shadow-sm border border-gray-200 print:hidden relative z-10">
-        <div className="relative w-full md:w-[400px]">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-          <input
-            placeholder="Search by category, description, unit, or plate..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 pr-3 py-2 w-full rounded-md border border-gray-300 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        <div className="h-8 w-px bg-gray-200 hidden md:block mx-1"></div>
-
-        <div className="w-full md:w-auto flex items-center gap-2">
-          <span className="text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Filter By:</span>
-          <select
-            value={selectedFilterCategory}
-            onChange={(e) => setSelectedFilterCategory(e.target.value)}
-            className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-gray-50 outline-none cursor-pointer focus:ring-2 focus:ring-blue-500 w-full md:w-auto"
-          >
-            <option value="ALL">ALL CATEGORIES</option>
-            <option value="FUEL COSTS">FUEL COSTS</option>
-            <option value="DRIVER & HELPER WAGES">DRIVER & HELPER WAGES</option>
-            <option value="MAINTENANCE & REPAIR">MAINTENANCE & REPAIR</option>
-            <option value="INVENTORY SUPPLY">INVENTORY SUPPLY</option>
-            <option value="OTHER / MISC">OTHER / MISC</option>
-          </select>
-        </div>
-
-        <div className="hidden md:block flex-1"></div>
-
-        <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200 w-full md:w-auto mt-2 md:mt-0">
-          <button
-            onClick={() => setViewMode("detailed")}
-            className={`flex-1 md:flex-none justify-center flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === 'detailed' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            <ListChecks className="w-4 h-4" /> Detailed
-          </button>
-          <button
-            onClick={() => setViewMode("summary")}
-            className={`flex-1 md:flex-none justify-center flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === 'summary' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            <FileText className="w-4 h-4" /> Summary
-          </button>
-        </div>
-      </div>
-
-      {/* Financial Metric Cards (Interactive Dashboard) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 print:hidden">
-        <div 
-          onClick={() => setSelectedOverheadCategory("ALL")}
-          className="bg-white border border-gray-200 p-4.5 rounded-xl shadow-sm hover:shadow-md hover:bg-rose-50/30 transition-all cursor-pointer group"
-        >
-          <div className="flex justify-between items-start mb-2">
-            <span className="text-gray-500 font-bold text-[10px] uppercase tracking-wider group-hover:text-rose-900 transition-colors">Total Overhead</span>
-            <ArrowRightLeft className="w-5 h-5 text-gray-400 group-hover:text-rose-600 transition-colors" />
-          </div>
-          <h3 className="font-extrabold text-2xl text-rose-700 mt-0.5 font-mono">
-            ₱{totalFilteredAmount.toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2})}
-          </h3>
-          <p className="text-[10px] text-rose-600/70 mt-1 uppercase font-bold">Click to view breakdown</p>
-        </div>
-
-        <div 
-          onClick={() => setSelectedOverheadCategory("REVENUE")}
-          className="bg-white border border-gray-200 p-4.5 rounded-xl shadow-sm hover:shadow-md hover:bg-emerald-50/30 transition-all cursor-pointer group"
-        >
-          <div className="flex justify-between items-start mb-2">
-            <span className="text-gray-500 font-bold text-[10px] uppercase tracking-wider group-hover:text-emerald-900 transition-colors">Trip Revenue</span>
-            <DollarSign className="w-5 h-5 text-emerald-500 group-hover:scale-110 transition-transform" />
-          </div>
-          <h3 className="font-extrabold text-2xl text-emerald-700 mt-0.5 font-mono">
-            ₱{totalRevenue.toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2})}
-          </h3>
-          <p className="text-[10px] text-emerald-600/70 mt-1 uppercase font-bold">Click to view breakdown</p>
-        </div>
-
-        <div 
-          onClick={() => setSelectedOverheadCategory("INVENTORY SUPPLY")}
-          className="bg-white border border-gray-200 p-4.5 rounded-xl shadow-sm hover:shadow-md hover:bg-rose-50/30 transition-all cursor-pointer group"
-        >
-          <div className="flex justify-between items-start mb-2">
-            <span className="text-gray-500 font-bold text-[10px] uppercase tracking-wider group-hover:text-rose-900 transition-colors">Inventory Supply</span>
-            <Package className="w-5 h-5 text-rose-600 group-hover:scale-110 transition-transform" />
-          </div>
-          <h3 className="font-extrabold text-2xl text-rose-800 mt-0.5 font-mono">
-            ₱{(categorySummaries["INVENTORY SUPPLY"] || 0).toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2})}
-          </h3>
-          <p className="text-[10px] text-rose-600/70 mt-1 uppercase font-bold">Click to view breakdown</p>
-        </div>
-
-        <div 
-          onClick={() => setSelectedOverheadCategory("MAINTENANCE & REPAIR")}
-          className="bg-white border border-gray-200 p-4.5 rounded-xl shadow-sm hover:shadow-md hover:bg-amber-50/30 transition-all cursor-pointer group"
-        >
-          <div className="flex justify-between items-start mb-2">
-            <span className="text-gray-500 font-bold text-[10px] uppercase tracking-wider group-hover:text-amber-900 transition-colors">Maintenance</span>
-            <Wrench className="w-5 h-5 text-amber-600 group-hover:scale-110 transition-transform" />
-          </div>
-          <h3 className="font-extrabold text-2xl text-amber-700 mt-0.5 font-mono">
-            ₱{(categorySummaries["MAINTENANCE & REPAIR"] || 0).toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2})}
-          </h3>
-          <p className="text-[10px] text-amber-600/70 mt-1 uppercase font-bold">Click to view breakdown</p>
-        </div>
-      </div>
-
-      {/* Main Content Area */}
-      <div className="print:p-0">
-        <style>{`
-          @media print {
-            @page {
-              size: 8.5in 13in;
-              margin: 0.2in;
-            }
-            body {
-              background: white;
-              -webkit-print-color-adjust: exact;
-              print-color-adjust: exact;
-              margin: 0 !important;
-              padding: 0 !important;
-              width: 100% !important;
-              max-width: 100% !important;
-            }
-          }
-        `}</style>
-
-        {/* UNIFIED PRINT HEADER (Only visible when printing) */}
-        <div className="hidden print:flex flex-col mb-8 border-b-4 border-blue-900 pb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <img src="/alk_logo.jpg" alt="ALK Logo" className="w-16 h-16 object-cover rounded-lg shadow-sm border border-gray-200" />
-              <div>
-                <h1 className="text-2xl font-black uppercase tracking-widest text-blue-950 m-0 leading-tight">ALK Trucking Services</h1>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Reports & Analytics Division</p>
-              </div>
+              )}
+              {reportPeriod === "custom" && (
+                <div className="flex items-center gap-1">
+                  <input type="date" value={customStartDate} onChange={(e) => setCustomStartDate(e.target.value)} className="px-2 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white" />
+                  <span className="text-xs text-gray-400 font-bold">to</span>
+                  <input type="date" value={customEndDate} onChange={(e) => setCustomEndDate(e.target.value)} className="px-2 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-white" />
+                </div>
+              )}
             </div>
-            <div className="text-right">
-              <h2 className="text-sm font-black uppercase tracking-widest text-black mb-1">
-                {selectedFilterCategory === "ALL" ? "OVERHEAD EXPENSES" : selectedFilterCategory} REPORT
-              </h2>
-              <p className="text-[10px] text-gray-700 font-bold uppercase mb-0.5">As of: {formattedDateSelected}</p>
-              <p className="text-[10px] font-bold uppercase mb-1 flex justify-end gap-1 items-center">
-                <span className="text-gray-700">Status:</span>
-                <span className={reportStatus === 'Active' ? 'text-emerald-600' : reportStatus === 'Completed' ? 'text-amber-600' : 'text-blue-600'}>
-                  {reportStatus === "All" ? "All Status" : reportStatus}
-                </span>
-              </p>
-              <p className="text-[9px] text-gray-400 font-bold uppercase">Printed on: {format(new Date(), "MMM dd, yyyy - hh:mm a")}</p>
-            </div>
+
+            <button onClick={() => window.print()} className="flex items-center justify-center bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 h-9 px-3 rounded-md text-sm font-semibold transition-colors">
+              <Printer className="w-4 h-4 mr-2" /> Print PDF
+            </button>
           </div>
-          
-          <div className="flex justify-between items-end mt-4">
-            <div className="flex gap-6 items-center">
-              <div>
-                <p className="text-[8px] text-gray-400 uppercase font-bold leading-none mb-1">Report Period</p>
-                <p className="text-xs font-black text-black uppercase leading-none">
-                  {reportPeriod} <span className="font-bold text-gray-600 ml-1">
-                    ({formattedDateSelected})
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-3 items-center bg-white p-3 rounded-lg shadow-sm border border-gray-200 print:hidden relative z-10">
+          <div className="relative w-full md:w-[400px]">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+            <input
+              placeholder="Search by category, description, unit, or plate..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-3 py-2 w-full rounded-md border border-gray-300 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="h-8 w-px bg-gray-200 hidden md:block mx-1"></div>
+
+          <div className="w-full md:w-auto flex items-center gap-2">
+            <span className="text-xs font-bold text-gray-500 uppercase whitespace-nowrap">Filter By:</span>
+            <select
+              value={selectedFilterCategory}
+              onChange={(e) => setSelectedFilterCategory(e.target.value)}
+              className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-gray-50 outline-none cursor-pointer focus:ring-2 focus:ring-blue-500 w-full md:w-auto"
+            >
+              <option value="ALL">ALL CATEGORIES</option>
+              <option value="FUEL COSTS">FUEL COSTS</option>
+              <option value="DRIVER & HELPER WAGES">DRIVER & HELPER WAGES</option>
+              <option value="MAINTENANCE & REPAIR">MAINTENANCE & REPAIR</option>
+              <option value="INVENTORY SUPPLY">INVENTORY SUPPLY</option>
+              <option value="OTHER / MISC">OTHER / MISC</option>
+            </select>
+          </div>
+
+          <div className="hidden md:block flex-1"></div>
+
+          <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200 w-full md:w-auto mt-2 md:mt-0">
+            <button
+              onClick={() => setViewMode("detailed")}
+              className={`flex-1 md:flex-none justify-center flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === 'detailed' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              <ListChecks className="w-4 h-4" /> Detailed
+            </button>
+            <button
+              onClick={() => setViewMode("summary")}
+              className={`flex-1 md:flex-none justify-center flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === 'summary' ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              <FileText className="w-4 h-4" /> Summary
+            </button>
+          </div>
+        </div>
+
+        {/* Financial Metric Cards (Interactive Dashboard) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 print:hidden">
+          <div 
+            onClick={() => setSelectedOverheadCategory("ALL")}
+            className="bg-white border border-gray-200 p-4.5 rounded-xl shadow-sm hover:shadow-md hover:bg-rose-50/30 transition-all cursor-pointer group"
+          >
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-gray-500 font-bold text-[10px] uppercase tracking-wider group-hover:text-rose-900 transition-colors">Total Overhead</span>
+              <ArrowRightLeft className="w-5 h-5 text-gray-400 group-hover:text-rose-600 transition-colors" />
+            </div>
+            <h3 className="font-extrabold text-2xl text-rose-700 mt-0.5 font-mono">
+              ₱{totalFilteredAmount.toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2})}
+            </h3>
+            <p className="text-[10px] text-rose-600/70 mt-1 uppercase font-bold">Click to view breakdown</p>
+          </div>
+
+          <div 
+            onClick={() => setSelectedOverheadCategory("REVENUE")}
+            className="bg-white border border-gray-200 p-4.5 rounded-xl shadow-sm hover:shadow-md hover:bg-emerald-50/30 transition-all cursor-pointer group"
+          >
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-gray-500 font-bold text-[10px] uppercase tracking-wider group-hover:text-emerald-900 transition-colors">Trip Revenue</span>
+              <DollarSign className="w-5 h-5 text-emerald-500 group-hover:scale-110 transition-transform" />
+            </div>
+            <h3 className="font-extrabold text-2xl text-emerald-700 mt-0.5 font-mono">
+              ₱{totalRevenue.toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2})}
+            </h3>
+            <p className="text-[10px] text-emerald-600/70 mt-1 uppercase font-bold">Click to view breakdown</p>
+          </div>
+
+          <div 
+            onClick={() => setSelectedOverheadCategory("INVENTORY SUPPLY")}
+            className="bg-white border border-gray-200 p-4.5 rounded-xl shadow-sm hover:shadow-md hover:bg-rose-50/30 transition-all cursor-pointer group"
+          >
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-gray-500 font-bold text-[10px] uppercase tracking-wider group-hover:text-rose-900 transition-colors">Inventory Supply</span>
+              <Package className="w-5 h-5 text-rose-600 group-hover:scale-110 transition-transform" />
+            </div>
+            <h3 className="font-extrabold text-2xl text-rose-800 mt-0.5 font-mono">
+              ₱{(categorySummaries["INVENTORY SUPPLY"] || 0).toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2})}
+            </h3>
+            <p className="text-[10px] text-rose-600/70 mt-1 uppercase font-bold">Click to view breakdown</p>
+          </div>
+
+          <div 
+            onClick={() => setSelectedOverheadCategory("MAINTENANCE & REPAIR")}
+            className="bg-white border border-gray-200 p-4.5 rounded-xl shadow-sm hover:shadow-md hover:bg-amber-50/30 transition-all cursor-pointer group"
+          >
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-gray-500 font-bold text-[10px] uppercase tracking-wider group-hover:text-amber-900 transition-colors">Maintenance</span>
+              <Wrench className="w-5 h-5 text-amber-600 group-hover:scale-110 transition-transform" />
+            </div>
+            <h3 className="font-extrabold text-2xl text-amber-700 mt-0.5 font-mono">
+              ₱{(categorySummaries["MAINTENANCE & REPAIR"] || 0).toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2})}
+            </h3>
+            <p className="text-[10px] text-amber-600/70 mt-1 uppercase font-bold">Click to view breakdown</p>
+          </div>
+        </div>
+
+        {/* Main Content Area */}
+        <div className="print:p-0">
+          {!viewingPaperTrip && (
+            <style>{`
+              @media print {
+                @page {
+                  size: 8.5in 13in;
+                  margin: 0.2in;
+                }
+                body {
+                  background: white;
+                  -webkit-print-color-adjust: exact;
+                  print-color-adjust: exact;
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  width: 100% !important;
+                  max-width: 100% !important;
+                }
+              }
+            `}</style>
+          )}
+
+          {/* UNIFIED PRINT HEADER (Only visible when printing) */}
+          <div className="hidden print:flex flex-col mb-8 border-b-4 border-blue-900 pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <img src="/alk_logo.jpg" alt="ALK Logo" className="w-16 h-16 object-cover rounded-lg shadow-sm border border-gray-200" />
+                <div>
+                  <h1 className="text-2xl font-black uppercase tracking-widest text-blue-950 m-0 leading-tight">ALK Trucking Services</h1>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Reports & Analytics Division</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <h2 className="text-sm font-black uppercase tracking-widest text-black mb-1">
+                  {selectedFilterCategory === "ALL" ? "OVERHEAD EXPENSES" : selectedFilterCategory} REPORT
+                </h2>
+                <p className="text-[10px] text-gray-700 font-bold uppercase mb-0.5">As of: {formattedDateSelected}</p>
+                <p className="text-[10px] font-bold uppercase mb-1 flex justify-end gap-1 items-center">
+                  <span className="text-gray-700">Status:</span>
+                  <span className={reportStatus === 'Active' ? 'text-emerald-600' : reportStatus === 'Completed' ? 'text-amber-600' : 'text-blue-600'}>
+                    {reportStatus === "All" ? "All Status" : reportStatus}
                   </span>
                 </p>
+                <p className="text-[9px] text-gray-400 font-bold uppercase">Printed on: {format(new Date(), "MMM dd, yyyy - hh:mm a")}</p>
               </div>
-              <div className="w-px h-6 bg-gray-200"></div>
-              <div>
-                <p className="text-[8px] text-gray-400 uppercase font-bold leading-none mb-1">Report Type</p>
-                <p className="text-xs font-black text-black uppercase leading-none">{viewMode === "summary" ? "Executive Summary" : "Detailed Log Monitor"}</p>
+            </div>
+            
+            <div className="flex justify-between items-end mt-4">
+              <div className="flex gap-6 items-center">
+                <div>
+                  <p className="text-[8px] text-gray-400 uppercase font-bold leading-none mb-1">Report Period</p>
+                  <p className="text-xs font-black text-black uppercase leading-none">
+                    {reportPeriod} <span className="font-bold text-gray-600 ml-1">
+                      ({formattedDateSelected})
+                    </span>
+                  </p>
+                </div>
+                <div className="w-px h-6 bg-gray-200"></div>
+                <div>
+                  <p className="text-[8px] text-gray-400 uppercase font-bold leading-none mb-1">Report Type</p>
+                  <p className="text-xs font-black text-black uppercase leading-none">{viewMode === "summary" ? "Executive Summary" : "Detailed Log Monitor"}</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {viewMode === "summary" ? (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6 print:shadow-none print:border-none print:p-0 relative z-10">
-            <div className="overflow-x-auto print:overflow-visible">
-              <table className="w-full border-collapse text-xs text-left text-gray-800 border border-gray-300 print:text-[10px] print:[&_th]:px-1.5 print:[&_th]:py-1 print:[&_td]:px-1.5 print:[&_td]:py-1">
-                <thead>
-                  <tr className="bg-blue-50 border-b border-gray-300 text-gray-900 font-bold uppercase" style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
-                    <th className="border border-gray-300 px-2 py-2 text-center w-10">NO.</th>
-                    <th className="border border-gray-300 px-3 py-2 min-w-[200px]">CATEGORY DESCRIPTION</th>
-                    <th className="border border-gray-300 px-3 py-2 min-w-[200px]">TYPE OF EXPENSE</th>
-                    <th className="border border-gray-300 px-3 py-2 text-right min-w-[150px]">TOTAL AMOUNT</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {CATEGORIES.map((cat, idx) => {
-                    const amount = categorySummaries[cat] || 0;
-                    return (
-                      <tr 
-                        key={cat} 
-                        onClick={() => setSelectedOverheadCategory(cat)}
-                        className="border-b border-gray-300 transition-colors bg-white hover:bg-blue-50/50 font-medium group cursor-pointer"
-                        title={`Click to view breakdown of ${cat}`}
-                      >
-                        <td className="border border-gray-300 px-2 py-2.5 text-center font-bold text-gray-700">{idx + 1}</td>
-                        <td className="border border-gray-300 px-3 py-2.5 font-extrabold text-gray-900 group-hover:text-blue-700 transition-colors">{cat}</td>
-                        <td className="border border-gray-300 px-3 py-2.5 text-[10px] text-gray-700 uppercase font-semibold leading-tight">{CATEGORY_DESCRIPTIONS[cat] || ""}</td>
-                        <td className="border border-gray-300 px-3 py-2.5 text-right font-mono font-extrabold text-rose-800">
-                          {amount > 0 ? `₱${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "-"}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  <tr className="bg-rose-50 border-t border-rose-300 font-black text-rose-900 text-sm">
-                    <td colSpan={3} className="border border-rose-200 px-4 py-3 text-right uppercase tracking-wider">
-                      {selectedFilterCategory === "ALL" ? "GRAND TOTAL OVERHEAD EXPENSES" : `TOTAL ${selectedFilterCategory}`}
-                    </td>
-                    <td className="border border-rose-200 px-3 py-3 text-right font-mono text-base text-rose-700 font-black">
-                      ₱{totalFilteredAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </td>
-                  </tr>
-                  {selectedFilterCategory === "ALL" && (
-                    <>
-                      <tr className="bg-emerald-50 border-t border-emerald-200 font-black text-gray-900 text-sm">
-                        <td colSpan={3} className="border border-emerald-200 px-4 py-3 text-right uppercase tracking-wider text-emerald-900">TRIP REVENUE</td>
-                        <td className="border border-emerald-200 px-3 py-3 text-right font-mono text-base text-emerald-700 font-black">
-                          ₱{totalRevenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                      </tr>
-                      <tr className="bg-blue-100 border-t-2 border-blue-400 font-black text-gray-900 text-sm">
-                        <td colSpan={3} className="border border-blue-300 px-4 py-4 text-right uppercase tracking-wider text-blue-900">NET PROFIT (REVENUE - EXPENSES)</td>
-                        <td className="border border-blue-300 px-3 py-4 text-right font-mono text-lg text-blue-800 font-black">
-                          ₱{netProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                      </tr>
-                    </>
-                  )}
-                </tbody>
-              </table>
-
-              <div className="mt-12 pt-6 grid grid-cols-3 gap-8 text-xs font-bold text-gray-800 border-t border-gray-200 print:mt-8">
-                <div><p className="mb-10">PREPARED BY:</p><div className="border-b border-gray-800 w-4/5"></div></div>
-                <div><p className="mb-10">NOTED BY:</p><div className="border-b border-gray-800 w-4/5"></div></div>
-                <div><p className="mb-10">APPROVED BY:</p><div className="border-b border-gray-800 w-4/5"></div></div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:shadow-none print:border-none print:overflow-visible relative z-10">
-            <div className="overflow-x-auto print:overflow-visible">
-              <table className="w-full border-collapse text-sm text-left text-gray-700 [&_th]:border [&_th]:border-gray-200 [&_td]:border [&_td]:border-gray-200 print:text-[10px] print:[&_th]:px-1 print:[&_th]:py-1 print:[&_td]:px-1 print:[&_td]:py-1">
-                <thead className="text-xs text-gray-700 bg-blue-50 border-b border-blue-200 uppercase font-bold" style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
-                  <tr>
-                    <th className="px-2 py-2 text-[10px]">NO.</th>
-                    <th className="px-2 py-2 text-[10px]">DATE</th>
-                    <th className="px-2 py-2 text-[10px]">CATEGORY</th>
-                    <th className="px-2 py-2 text-[10px] min-w-[200px]">DESCRIPTION</th>
-                    <th className="px-2 py-2 text-[10px]">CHARGE TO</th>
-                    <th className="px-2 py-2 text-[10px]">UNIT / PLATE</th>
-                    <th className="px-2 py-2 text-[10px] text-right">AMOUNT</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {unifiedExpenses.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-4 py-12 text-center text-gray-500">No expenses found for this period.</td>
+          {viewMode === "summary" ? (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6 print:shadow-none print:border-none print:p-0 relative z-10">
+              <div className="overflow-x-auto print:overflow-visible">
+                <table className="w-full border-collapse text-xs text-left text-gray-800 border border-gray-300 print:text-[10px] print:[&_th]:px-1.5 print:[&_th]:py-1 print:[&_td]:px-1.5 print:[&_td]:py-1">
+                  <thead>
+                    <tr className="bg-blue-50 border-b border-gray-300 text-gray-900 font-bold uppercase" style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
+                      <th className="border border-gray-300 px-2 py-2 text-center w-10">NO.</th>
+                      <th className="border border-gray-300 px-3 py-2 min-w-[200px]">CATEGORY DESCRIPTION</th>
+                      <th className="border border-gray-300 px-3 py-2 min-w-[200px]">TYPE OF EXPENSE</th>
+                      <th className="border border-gray-300 px-3 py-2 text-right min-w-[150px]">TOTAL AMOUNT</th>
                     </tr>
-                  ) : (
-                    unifiedExpenses.map((expense, index) => (
-                      <tr 
-                        key={index} 
-                        className="border-b border-gray-100 hover:bg-blue-50/50 transition-colors group cursor-pointer"
-                        onClick={() => {
-                          if (expense.sourceTrip) {
-                            setInspectingTrip(expense.sourceTrip);
-                          } else {
-                            setSelectedOverheadCategory(expense.category);
-                          }
-                        }}
-                      >
-                        <td className="px-2 py-2 font-mono text-[11px] text-gray-500">{index + 1}</td>
-                        <td className="px-2 py-2 whitespace-nowrap text-[11px]">{format(parseISO(expense.date), "MMM dd, yyyy")}</td>
-                        <td className="px-2 py-2 font-semibold text-blue-700 text-[11px] whitespace-nowrap">{expense.category}</td>
-                        <td className="px-2 py-2 text-gray-900 text-xs">{expense.desc}</td>
-                        <td className="px-2 py-2 font-medium text-gray-800 text-[11px]">{expense.charge}</td>
-                        <td className="px-2 py-2 font-mono text-gray-600 text-[11px]">{expense.unit !== "-" ? `${expense.unit} (${expense.plate})` : "-"}</td>
-                        <td className="px-2 py-2 text-right font-bold text-gray-900 text-xs whitespace-nowrap">
-                          ₱ {expense.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-                {unifiedExpenses.length > 0 && (
-                  <tbody className="bg-rose-50/50 font-bold border-t-2 border-gray-200">
-                    <tr className="border-b border-rose-100">
-                      <td colSpan={6} className="px-4 py-3 text-right text-rose-900 uppercase font-black">
-                        {reportPeriod === 'daily' ? 'Daily' : reportPeriod === 'weekly' ? 'Weekly' : reportPeriod === 'monthly' ? 'Monthly' : reportPeriod === 'yearly' ? 'Yearly' : 'Overall'} Total {selectedFilterCategory === "ALL" ? "Expenses" : selectedFilterCategory}:
+                  </thead>
+                  <tbody>
+                    {CATEGORIES.map((cat, idx) => {
+                      const amount = categorySummaries[cat] || 0;
+                      return (
+                        <tr 
+                          key={cat} 
+                          onClick={() => setSelectedOverheadCategory(cat)}
+                          className="border-b border-gray-300 transition-colors bg-white hover:bg-blue-50/50 font-medium group cursor-pointer"
+                          title={`Click to view breakdown of ${cat}`}
+                        >
+                          <td className="border border-gray-300 px-2 py-2.5 text-center font-bold text-gray-700">{idx + 1}</td>
+                          <td className="border border-gray-300 px-3 py-2.5 font-extrabold text-gray-900 group-hover:text-blue-700 transition-colors">{cat}</td>
+                          <td className="border border-gray-300 px-3 py-2.5 text-[10px] text-gray-700 uppercase font-semibold leading-tight">{CATEGORY_DESCRIPTIONS[cat] || ""}</td>
+                          <td className="border border-gray-300 px-3 py-2.5 text-right font-mono font-extrabold text-rose-800">
+                            {amount > 0 ? `₱${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "-"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    <tr className="bg-rose-50 border-t border-rose-300 font-black text-rose-900 text-sm">
+                      <td colSpan={3} className="border border-rose-200 px-4 py-3 text-right uppercase tracking-wider">
+                        {selectedFilterCategory === "ALL" ? "GRAND TOTAL OVERHEAD EXPENSES" : `TOTAL ${selectedFilterCategory}`}
                       </td>
-                      <td className="px-4 py-3 text-right text-lg font-mono text-rose-700 whitespace-nowrap font-black">
-                        ₱ {totalFilteredAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      <td className="border border-rose-200 px-3 py-3 text-right font-mono text-base text-rose-700 font-black">
+                        ₱{totalFilteredAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </td>
                     </tr>
                     {selectedFilterCategory === "ALL" && (
                       <>
-                        <tr className="bg-emerald-50 border-t border-emerald-200">
-                          <td colSpan={6} className="px-4 py-3 text-right text-emerald-900 uppercase">
-                            {reportPeriod === 'daily' ? 'Daily' : reportPeriod === 'weekly' ? 'Weekly' : reportPeriod === 'monthly' ? 'Monthly' : reportPeriod === 'yearly' ? 'Yearly' : 'Overall'} Trip Revenue:
-                          </td>
-                          <td className="px-4 py-3 text-right text-lg text-emerald-700 whitespace-nowrap">
-                            ₱ {totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        <tr className="bg-emerald-50 border-t border-emerald-200 font-black text-gray-900 text-sm">
+                          <td colSpan={3} className="border border-emerald-200 px-4 py-3 text-right uppercase tracking-wider text-emerald-900">TRIP REVENUE</td>
+                          <td className="border border-emerald-200 px-3 py-3 text-right font-mono text-base text-emerald-700 font-black">
+                            ₱{totalRevenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                         </tr>
-                        <tr className="bg-blue-100 border-t-2 border-blue-400">
-                          <td colSpan={6} className="px-4 py-4 text-right text-blue-900 uppercase font-black tracking-wider">
-                            NET PROFIT (REVENUE - EXPENSES):
-                          </td>
-                          <td className="px-4 py-4 text-right text-xl text-blue-800 font-black whitespace-nowrap">
-                            ₱ {netProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        <tr className="bg-blue-100 border-t-2 border-blue-400 font-black text-gray-900 text-sm">
+                          <td colSpan={3} className="border border-blue-300 px-4 py-4 text-right uppercase tracking-wider text-blue-900">NET PROFIT (REVENUE - EXPENSES)</td>
+                          <td className="border border-blue-300 px-3 py-4 text-right font-mono text-lg text-blue-800 font-black">
+                            ₱{netProfit.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                         </tr>
                       </>
                     )}
                   </tbody>
-                )}
-              </table>
+                </table>
+
+                <div className="mt-12 pt-6 grid grid-cols-3 gap-8 text-xs font-bold text-gray-800 border-t border-gray-200 print:mt-8">
+                  <div><p className="mb-10">PREPARED BY:</p><div className="border-b border-gray-800 w-4/5"></div></div>
+                  <div><p className="mb-10">NOTED BY:</p><div className="border-b border-gray-800 w-4/5"></div></div>
+                  <div><p className="mb-10">APPROVED BY:</p><div className="border-b border-gray-800 w-4/5"></div></div>
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden print:shadow-none print:border-none print:overflow-visible relative z-10">
+              <div className="overflow-x-auto print:overflow-visible">
+                <table className="w-full border-collapse text-sm text-left text-gray-700 [&_th]:border [&_th]:border-gray-200 [&_td]:border [&_td]:border-gray-200 print:text-[10px] print:[&_th]:px-1 print:[&_th]:py-1 print:[&_td]:px-1 print:[&_td]:py-1">
+                  <thead className="text-xs text-gray-700 bg-blue-50 border-b border-blue-200 uppercase font-bold" style={{ printColorAdjust: 'exact', WebkitPrintColorAdjust: 'exact' }}>
+                    <tr>
+                      <th className="px-2 py-2 text-[10px]">NO.</th>
+                      <th className="px-2 py-2 text-[10px]">DATE</th>
+                      <th className="px-2 py-2 text-[10px]">CATEGORY</th>
+                      <th className="px-2 py-2 text-[10px] min-w-[200px]">DESCRIPTION</th>
+                      <th className="px-2 py-2 text-[10px]">CHARGE TO</th>
+                      <th className="px-2 py-2 text-[10px]">UNIT / PLATE</th>
+                      <th className="px-2 py-2 text-[10px] text-right">AMOUNT</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {unifiedExpenses.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="px-4 py-12 text-center text-gray-500">No expenses found for this period.</td>
+                      </tr>
+                    ) : (
+                      unifiedExpenses.map((expense, index) => (
+                        <tr 
+                          key={index} 
+                          className="border-b border-gray-100 hover:bg-blue-50/50 transition-colors group cursor-pointer"
+                          onClick={() => {
+                            if (expense.sourceTrip) {
+                              setInspectingTrip(expense.sourceTrip);
+                            } else {
+                              setSelectedOverheadCategory(expense.category);
+                            }
+                          }}
+                        >
+                          <td className="px-2 py-2 font-mono text-[11px] text-gray-500">{index + 1}</td>
+                          <td className="px-2 py-2 whitespace-nowrap text-[11px]">{format(parseISO(expense.date), "MMM dd, yyyy")}</td>
+                          <td className="px-2 py-2 font-semibold text-blue-700 text-[11px] whitespace-nowrap">{expense.category}</td>
+                          <td className="px-2 py-2 text-gray-900 text-xs">{expense.desc}</td>
+                          <td className="px-2 py-2 font-medium text-gray-800 text-[11px]">{expense.charge}</td>
+                          <td className="px-2 py-2 font-mono text-gray-600 text-[11px]">{expense.unit !== "-" ? `${expense.unit} (${expense.plate})` : "-"}</td>
+                          <td className="px-2 py-2 text-right font-bold text-gray-900 text-xs whitespace-nowrap">
+                            ₱ {expense.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                  {unifiedExpenses.length > 0 && (
+                    <tbody className="bg-rose-50/50 font-bold border-t-2 border-gray-200">
+                      <tr className="border-b border-rose-100">
+                        <td colSpan={6} className="px-4 py-3 text-right text-rose-900 uppercase font-black">
+                          {reportPeriod === 'daily' ? 'Daily' : reportPeriod === 'weekly' ? 'Weekly' : reportPeriod === 'monthly' ? 'Monthly' : reportPeriod === 'yearly' ? 'Yearly' : 'Overall'} Total {selectedFilterCategory === "ALL" ? "Expenses" : selectedFilterCategory}:
+                        </td>
+                        <td className="px-4 py-3 text-right text-lg font-mono text-rose-700 whitespace-nowrap font-black">
+                          ₱ {totalFilteredAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                      </tr>
+                      {selectedFilterCategory === "ALL" && (
+                        <>
+                          <tr className="bg-emerald-50 border-t border-emerald-200">
+                            <td colSpan={6} className="px-4 py-3 text-right text-emerald-900 uppercase">
+                              {reportPeriod === 'daily' ? 'Daily' : reportPeriod === 'weekly' ? 'Weekly' : reportPeriod === 'monthly' ? 'Monthly' : reportPeriod === 'yearly' ? 'Yearly' : 'Overall'} Trip Revenue:
+                            </td>
+                            <td className="px-4 py-3 text-right text-lg text-emerald-700 whitespace-nowrap">
+                              ₱ {totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                          </tr>
+                          <tr className="bg-blue-100 border-t-2 border-blue-400">
+                            <td colSpan={6} className="px-4 py-4 text-right text-blue-900 uppercase font-black tracking-wider">
+                              NET PROFIT (REVENUE - EXPENSES):
+                            </td>
+                            <td className="px-4 py-4 text-right text-xl text-blue-800 font-black whitespace-nowrap">
+                              ₱ {netProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                          </tr>
+                        </>
+                      )}
+                    </tbody>
+                  )}
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Modals & Inspectors */}
+      {/* Modals & Inspectors (Rendered OUTSIDE the main printable page div) */}
       {inspectingTrip && (
         <TripInspectorModal
           trip={inspectingTrip}
@@ -737,10 +741,20 @@ export default function ReportsPage() {
       )}
       
       {viewingPaperTrip && (
-        <DigitalPaperForm
-          trip={viewingPaperTrip}
-          onClose={() => setViewingPaperTrip(null)}
-        />
+        <div
+          onClick={() => setViewingPaperTrip(null)}
+          className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto cursor-pointer print:p-0 print:bg-white print:static print:overflow-visible print:block"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()} 
+            className="w-full max-w-4xl max-h-[95vh] overflow-y-auto print:max-h-none print:overflow-visible print:w-full print:max-w-none cursor-default"
+          >
+            <DigitalPaperForm
+              trip={viewingPaperTrip}
+              onClose={() => setViewingPaperTrip(null)}
+            />
+          </div>
+        </div>
       )}
 
       {/* Autoworx Overhead Category Floating Detail Modal */}
@@ -898,6 +912,6 @@ export default function ReportsPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

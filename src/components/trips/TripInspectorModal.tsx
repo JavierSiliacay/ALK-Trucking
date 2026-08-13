@@ -1,9 +1,20 @@
 "use client";
 
 import React from "react";
-import { X, Printer, Check, MapPin, Truck, User, Calendar, CreditCard, DollarSign } from "lucide-react";
+import { X, Printer, Check, MapPin, Truck, User, Calendar, CreditCard, DollarSign, Loader2, Map } from "lucide-react";
+import dynamic from "next/dynamic";
 import { Trip, calculateTripTotals } from "@/lib/trips-store";
 import { formatDateLong } from "@/lib/utils";
+
+const DynamicRouteMap = dynamic(() => import("./RouteMap"), { 
+  ssr: false, 
+  loading: () => (
+    <div className="w-full h-full bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-400 rounded-lg">
+      <Loader2 className="w-5 h-5 animate-spin mr-2" />
+      Loading Map Engine...
+    </div>
+  )
+});
 
 interface TripInspectorModalProps {
   trip: Trip | null;
@@ -12,6 +23,69 @@ interface TripInspectorModalProps {
 }
 
 export default function TripInspectorModal({ trip, onClose, onPrint }: TripInspectorModalProps) {
+  const [routeGeometry, setRouteGeometry] = React.useState<[number, number][]>([]);
+  const [isMapLoading, setIsMapLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!trip) {
+      setRouteGeometry([]);
+      return;
+    }
+    
+    let isMounted = true;
+    
+    const fetchRoute = async () => {
+      const origin = trip.origin || "CDO";
+      const destination = trip.destination;
+      if (!destination) return;
+      
+      setIsMapLoading(true);
+      try {
+        const CITY_ALIASES: Record<string, string> = {
+          "CDO": "Cagayan de Oro",
+          "GENSAN": "General Santos City",
+          "DVO": "Davao City",
+          "ZAMBO": "Zamboanga City",
+          "BUTUAN": "Butuan City",
+          "ILIGAN": "Iligan City",
+          "SURIGAO": "Surigao City",
+        };
+
+        const getCoordinates = async (city: string) => {
+          const normalizedCity = CITY_ALIASES[city.toUpperCase()] || city;
+          const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(normalizedCity)},+Philippines&format=json&limit=1`);
+          const data = await res.json();
+          if (data && data.length > 0) {
+            return { lat: data[0].lat, lon: data[0].lon };
+          }
+          throw new Error(`Location not found: ${city}`);
+        };
+
+        const p1 = await getCoordinates(origin);
+        const p2 = await getCoordinates(destination);
+
+        const res = await fetch(`/api/routing?originLon=${p1.lon}&originLat=${p1.lat}&destLon=${p2.lon}&destLat=${p2.lat}`);
+        if (!res.ok) throw new Error("Routing API failed");
+        
+        const data = await res.json();
+        if (data.routes && data.routes.length > 0 && isMounted) {
+          const route = data.routes[0];
+          if (route.geometry && route.geometry.coordinates) {
+            const coords = route.geometry.coordinates.map((c: [number, number]) => [c[1], c[0]]);
+            setRouteGeometry(coords);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load map for inspector:", err);
+      } finally {
+        if (isMounted) setIsMapLoading(false);
+      }
+    };
+
+    fetchRoute();
+    return () => { isMounted = false; };
+  }, [trip]);
+
   if (!trip) return null;
 
   const { totalExpense, remainder } = calculateTripTotals(trip);
@@ -111,7 +185,29 @@ export default function TripInspectorModal({ trip, onClose, onPrint }: TripInspe
             </div>
           </div>
 
-          {/* Row 3: Itemized Expenses Table */}
+          {/* Row 3: Live Map Routing Visualization */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
+              <Map className="w-4 h-4 text-[#00193c]" />
+              <span>Live Route Visualization</span>
+            </h4>
+            <div className="w-full h-[220px] rounded-lg border border-gray-200 overflow-hidden relative bg-slate-50 shadow-inner">
+              {isMapLoading ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-xs font-bold text-slate-400 bg-slate-100/50">
+                  <Loader2 className="w-6 h-6 animate-spin text-blue-500 mb-2" />
+                  Calculating optimal route via ORS/Mapbox...
+                </div>
+              ) : routeGeometry.length > 0 ? (
+                <DynamicRouteMap routeGeometry={routeGeometry} />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center text-xs font-bold text-slate-400">
+                  Route data unavailable or failed to load.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Row 4: Itemized Expenses Table */}
           <div className="space-y-2">
             <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
               <CreditCard className="w-4 h-4 text-[#00193c]" />
