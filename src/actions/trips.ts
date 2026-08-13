@@ -2,7 +2,7 @@
 
 import { db } from "@/db";
 import { trips, expenses } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 export async function getTrips() {
@@ -47,10 +47,19 @@ export async function createTrip(data: any) {
   try {
     const { expenses: expensesData, ...tripData } = data;
 
+    // Generate Lifetime Tracking Sequence (YYYYMM-XXXX)
+    const travelDate = new Date(tripData.dateOfTravel);
+    const yearMonth = `${travelDate.getFullYear()}${String(travelDate.getMonth() + 1).padStart(2, '0')}`;
+    
+    const [countResult] = await db.select({ count: sql<number>`count(*)` }).from(trips);
+    const lifetimeCount = Number(countResult.count);
+    const autoSeqNo = `${yearMonth}-${String(lifetimeCount + 1).padStart(4, '0')}`;
+
     // 1. Insert Trip
     const [newTrip] = await db.insert(trips).values({
       ...tripData,
-      dateOfTravel: new Date(tripData.dateOfTravel),
+      seqNo: autoSeqNo, // Automatically assigned, ignores frontend input
+      dateOfTravel: travelDate,
       gatePassDate: tripData.gatePassDate ? new Date(tripData.gatePassDate) : null,
       status: tripData.status || "Active",
       rate: tripData.rate.toString(), // Convert to string for decimal column

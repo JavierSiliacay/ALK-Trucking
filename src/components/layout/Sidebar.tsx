@@ -8,6 +8,7 @@ import { useSession, signOut } from "next-auth/react";
 import { ChevronLeft, ChevronRight, LogOut, User } from "lucide-react";
 import TripFormModal from "@/components/trips/TripFormModal";
 import { useTrips } from "@/lib/trips-store";
+import { handleSignOut } from "@/actions/auth";
 
 const LOGO_URL = "/alk_logo.jpg";
 
@@ -181,23 +182,25 @@ export default function Sidebar() {
         </nav>
 
         {/* User Profile & Sign Out Footer */}
-        {mounted && session?.user && (
+        {mounted && (
           <div className="p-3 border-t border-white/10 mt-auto">
             {!isCollapsed ? (
               <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-2.5 bg-white/5 rounded-xl p-2.5">
-                  <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-blue-900 flex items-center justify-center">
-                    {session.user.image ? (
-                      <img src={session.user.image} alt={session.user.name || "User"} className="w-full h-full object-cover" />
-                    ) : (
-                      <User className="w-4 h-4 text-blue-300" />
-                    )}
+                {session?.user && (
+                  <div className="flex items-center gap-2.5 bg-white/5 rounded-xl p-2.5">
+                    <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-blue-900 flex items-center justify-center">
+                      {session.user.image ? (
+                        <img src={session.user.image} alt={session.user.name || "User"} className="w-full h-full object-cover" />
+                      ) : (
+                        <User className="w-4 h-4 text-blue-300" />
+                      )}
+                    </div>
+                    <div className="overflow-hidden">
+                      <p className="text-white text-xs font-bold truncate">{session.user.name}</p>
+                      <p className="text-blue-300 text-[10px] truncate">{session.user.email}</p>
+                    </div>
                   </div>
-                  <div className="overflow-hidden">
-                    <p className="text-white text-xs font-bold truncate">{session.user.name}</p>
-                    <p className="text-blue-300 text-[10px] truncate">{session.user.email}</p>
-                  </div>
-                </div>
+                )}
                 <button
                   onClick={() => setIsSignOutModalOpen(true)}
                   className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-400 rounded-lg text-xs font-bold transition-all"
@@ -238,12 +241,14 @@ export default function Sidebar() {
               >
                 Cancel
               </button>
-              <button
-                onClick={() => signOut({ callbackUrl: "/login" })}
-                className="flex-1 px-4 py-3 bg-rose-600 text-white font-extrabold text-sm rounded-xl hover:bg-rose-700 transition-colors shadow-md shadow-rose-600/20 hover:-translate-y-0.5 active:translate-y-0"
-              >
-                Sign Out
-              </button>
+              <form action={handleSignOut} className="flex-1">
+                <button
+                  type="submit"
+                  className="w-full px-4 py-3 bg-rose-600 text-white font-extrabold text-sm rounded-xl hover:bg-rose-700 transition-colors shadow-md shadow-rose-600/20 hover:-translate-y-0.5 active:translate-y-0"
+                >
+                  Sign Out
+                </button>
+              </form>
             </div>
           </div>
         </div>,

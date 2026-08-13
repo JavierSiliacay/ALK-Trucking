@@ -336,15 +336,14 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
 
               <div className="space-y-1">
                 <label className="text-gray-700 font-semibold text-xs uppercase block">
-                  Sequence # <span className="text-red-500">*</span>
+                  Sequence # <span className="text-gray-400 text-[10px] normal-case ml-1">(Auto-generated)</span>
                 </label>
                 <input
                   type="text"
-                  required
-                  placeholder="e.g. JLY-056-26"
+                  disabled
+                  placeholder="Assigned upon saving"
                   value={seqNo}
-                  onChange={(e) => setSeqNo(e.target.value)}
-                  className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-sm font-mono font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full h-9 px-3 bg-gray-50 border border-gray-200 rounded text-sm font-mono font-bold text-gray-500 cursor-not-allowed outline-none"
                 />
               </div>
 
@@ -497,7 +496,7 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
                   >
                     <option value="" disabled>Select Truck...</option>
                     {masterData.trucks.map((t) => (
-                      <option key={t.unit} value={t.unit}>
+                      <option key={t.plateNo} value={t.unit}>
                         {t.unit} ({t.plateNo})
                       </option>
                     ))}
@@ -570,11 +569,10 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
                 </div>
                 <div className="space-y-1">
                   <label className="text-gray-700 font-semibold text-xs uppercase block">
-                    Helper 2 <span className="text-red-500">*</span>
+                    Helper 2 <span className="text-gray-400 text-[10px] normal-case ml-1">(Optional)</span>
                   </label>
                   <input
                     type="text"
-                    required
                     list="helper-list"
                     placeholder="e.g. Cruz, J."
                     value={helper2}

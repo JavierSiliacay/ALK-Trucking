@@ -14,6 +14,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      authorization: {
+        params: {
+          prompt: "select_account",
+        },
+      },
     }),
   ],
   pages: {
@@ -32,7 +37,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       if (!isDeveloper && !dbUser) {
         console.warn(`Unauthorized login attempt blocked: ${user.email}`);
-        return false; // Deny access
+        return false; // Deny access (Auth.js will redirect to error page)
       }
 
       // If they exist in DB (or developer), update their name if needed

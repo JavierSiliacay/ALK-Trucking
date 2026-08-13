@@ -11,7 +11,8 @@ export default function LoginPage() {
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
-    await signIn("google", { callbackUrl: "/authorizing" });
+    // Force Google to prompt for account selection so the user isn't stuck in a silent login loop
+    await signIn("google", { callbackUrl: "/authorizing" }, { prompt: "select_account" });
   };
 
   return (

@@ -25,6 +25,7 @@ export default function TripsPage() {
   const [search, setSearch] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
+  const [justSavedTripId, setJustSavedTripId] = useState<string | null>(null);
   const [viewingPaperTrip, setViewingPaperTrip] = useState<Trip | null>(null);
   const [inspectingTrip, setInspectingTrip] = useState<Trip | null>(null);
   const [confirmCompleteTrip, setConfirmCompleteTrip] = useState<Trip | null>(null);
@@ -184,7 +185,11 @@ export default function TripsPage() {
                   <tr
                     key={t.id}
                     onClick={() => setInspectingTrip(t)}
-                    className="hover:bg-blue-50/60 transition-colors cursor-pointer group"
+                    className={`transition-all duration-1000 cursor-pointer group ${
+                      justSavedTripId === t.id 
+                        ? 'bg-blue-100 ring-2 ring-blue-500 ring-inset shadow-[inset_0_0_15px_rgba(59,130,246,0.3)]' 
+                        : 'hover:bg-blue-50/60'
+                    }`}
                     title="Click to view detailed Trip Inspector modal"
                   >
                     <td className="px-6 py-5 font-mono font-extrabold text-[#00193c] group-hover:underline">{t.seqNo || t.id}</td>
@@ -384,11 +389,18 @@ export default function TripsPage() {
           setIsFormOpen(false);
           setEditingTrip(null);
         }}
-        onSave={(data) => {
+        onSave={async (data) => {
+          let savedTrip: any;
           if (editingTrip) {
-            updateTrip(data as Trip);
+            await updateTrip(data as Trip);
+            savedTrip = data;
           } else {
-            addTrip(data as any);
+            savedTrip = await addTrip(data as any);
+          }
+          
+          if (savedTrip && savedTrip.id) {
+            setJustSavedTripId(savedTrip.id);
+            setTimeout(() => setJustSavedTripId(null), 5000);
           }
         }}
         initialTrip={editingTrip}
