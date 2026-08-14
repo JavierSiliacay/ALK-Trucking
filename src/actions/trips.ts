@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { trips, expenses } from "@/db/schema";
+import { trips, expenses, systemSettings } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
