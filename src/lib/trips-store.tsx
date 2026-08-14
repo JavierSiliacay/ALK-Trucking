@@ -43,6 +43,7 @@ export interface MasterTruck {
   unit: string;
   plateNo: string;
   owner: string;
+  truckClass?: "CANTER" | "FORWARD" | "WINGVAN";
 }
 
 export interface MasterRoute {
@@ -75,10 +76,10 @@ const INITIAL_MASTER_DATA: MasterData = {
   drivers: ["ARA, R.", "Santos, Pedro", "Lim, Eduardo", "Reyes, Ramon", "Torres, Miguel", "Dela Cruz, Juan"],
   helpers: ["Gomez, B.", "Castro, Kevin", "Villanueva, Mark", "Soriano, Allen", "Ramos, Dennis"],
   trucks: [
-    { id: "t1", unit: "CANTER", plateNo: "AAX-4163", owner: "ALK Trucking" },
-    { id: "t2", unit: "ISUZU FORWARD", plateNo: "MAA-9120", owner: "ALK Trucking" },
-    { id: "t3", unit: "FUSO SUPER GREAT", plateNo: "KKB-3381", owner: "Mindanao Logistics" },
-    { id: "t4", unit: "HINO 500", plateNo: "NDB-5521", owner: "ALK Trucking" },
+    { id: "t1", unit: "CANTER", plateNo: "AAX-4163", owner: "ALK Trucking", truckClass: "CANTER" },
+    { id: "t2", unit: "ISUZU FORWARD", plateNo: "MAA-9120", owner: "ALK Trucking", truckClass: "FORWARD" },
+    { id: "t3", unit: "FUSO SUPER GREAT", plateNo: "KKB-3381", owner: "Mindanao Logistics", truckClass: "WINGVAN" },
+    { id: "t4", unit: "HINO 500", plateNo: "NDB-5521", owner: "ALK Trucking", truckClass: "WINGVAN" },
   ],
 };
 

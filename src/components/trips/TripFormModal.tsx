@@ -5,6 +5,7 @@ import { Plus, Trash2, Undo, Check, Loader2, X } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Trip, ExpenseItem, useTrips, DEFAULT_EXPENSE_CATEGORIES } from "@/lib/trips-store";
 import { CurrencyInput } from "@/components/ui/CurrencyInput";
+import { LocationAutocomplete } from "@/components/ui/LocationAutocomplete";
 
 const DynamicRouteMap = dynamic(() => import("./RouteMap"), { 
   ssr: false, 
@@ -109,6 +110,30 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
   const totalExpense = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
   const remainder = (Number(rate) || 0) - totalExpense;
 
+  const selectedTruck = masterData.trucks.find(t => t.unit === unit);
+  let truckClass = selectedTruck?.truckClass;
+  
+  // Fallback if truckClass isn't saved in the DB yet
+  if (!truckClass && unit) {
+    const unitUpper = unit.toUpperCase();
+    if (unitUpper.includes("CANTER")) truckClass = "CANTER";
+    else if (unitUpper.includes("FORWARD")) truckClass = "FORWARD";
+    else if (unitUpper.includes("WINGVAN") || unitUpper.includes("FUSO") || unitUpper.includes("HINO")) truckClass = "WINGVAN";
+  }
+
+  const parsedDistance = parseFloat(distance) || 0;
+  
+  let estimatedLiters = 0;
+  let ratioDivisor = 0;
+  
+  if (truckClass === "CANTER") ratioDivisor = 5;
+  else if (truckClass === "FORWARD") ratioDivisor = 4;
+  else if (truckClass === "WINGVAN") ratioDivisor = 3;
+
+  if (ratioDivisor > 0) {
+    estimatedLiters = parsedDistance / ratioDivisor;
+  }
+
   const handleTruckSelect = (unitName: string) => {
     setUnit(unitName);
     const found = masterData.trucks.find((t) => t.unit === unitName);
@@ -154,19 +179,8 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
     setLastDeletedExpense(null);
   };
 
-  const CITY_ALIASES: Record<string, string> = {
-    "CDO": "Cagayan de Oro",
-    "GENSAN": "General Santos City",
-    "DVO": "Davao City",
-    "ZAMBO": "Zamboanga City",
-    "BUTUAN": "Butuan City",
-    "ILIGAN": "Iligan City",
-    "SURIGAO": "Surigao City",
-  };
-
   const getCoordinates = async (city: string) => {
-    const normalizedCity = CITY_ALIASES[city.toUpperCase()] || city;
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(normalizedCity)},+Philippines&format=json&limit=1`);
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)},+Philippines&format=json&limit=1`);
     const data = await res.json();
     if (data && data.length > 0) {
       return { lat: data[0].lat, lon: data[0].lon };
@@ -278,7 +292,7 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
               {initialTrip ? "Edit Trip / Purchasing Record" : "Add Trip / Expense Record"}
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              ALK Trucking Fleet Trip & Expense Monitoring (Autoworx System Standard Layout)
+              ALK Trucking Fleet Trip & Expense Monitoring
             </p>
           </div>
           <button
@@ -410,24 +424,18 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
                   </button>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <input
-                    type="text"
-                    required
-                    list="origin-list"
-                    placeholder="e.g. CDO"
+                  <LocationAutocomplete
                     value={origin}
-                    onChange={(e) => setOrigin(e.target.value)}
-                    className="w-full h-9 px-2 bg-white border border-gray-300 rounded text-sm font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none text-center uppercase"
+                    onChange={setOrigin}
+                    placeholder="e.g. Cagayan de Oro"
+                    required
                   />
                   <span className="text-gray-400 font-bold text-sm">→</span>
-                  <input
-                    type="text"
-                    required
-                    list="destination-list"
-                    placeholder="e.g. SURIGAO"
+                  <LocationAutocomplete
                     value={destination}
-                    onChange={(e) => setDestination(e.target.value)}
-                    className="w-full h-9 px-2 bg-white border border-gray-300 rounded text-sm font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none text-center uppercase"
+                    onChange={setDestination}
+                    placeholder="e.g. Surigao City"
+                    required
                   />
                   <input
                     type="text"
@@ -460,12 +468,7 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
                     ))}
                   </div>
                 )}
-                <datalist id="origin-list">
-                  {uniqueOrigins.map((o) => <option key={o} value={o} />)}
-                </datalist>
-                <datalist id="destination-list">
-                  {uniqueDestinations.map((d) => <option key={d} value={d} />)}
-                </datalist>
+
               </div>
 
               <div className="space-y-1">
@@ -582,8 +585,28 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
                 </div>
               </div>
               
+              {/* Fuel Estimator */}
+              {estimatedLiters > 0 && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded px-3 py-2 flex items-center justify-between shadow-sm mt-2">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-emerald-700 text-[20px]">local_gas_station</span>
+                    <div className="leading-tight">
+                      <span className="font-bold text-[11px] text-emerald-900 uppercase block">Estimated Diesel Allocation</span>
+                      <span className="text-[10px] text-emerald-700 font-medium">
+                        Based on {parsedDistance} km ({truckClass} Ratio: 1L / {ratioDivisor}km)
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right bg-white px-2 py-0.5 rounded border border-emerald-200 shadow-xs">
+                    <span className="text-base font-black text-emerald-800 font-mono">
+                      {estimatedLiters.toFixed(1)} <span className="text-[10px] font-bold text-emerald-600 font-sans">Liters</span>
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* Map Visualization Area */}
-              <div className="w-full h-[180px] pt-1">
+              <div className="w-full h-[180px] pt-1 mt-2">
                 <DynamicRouteMap routeGeometry={routeGeometry} />
               </div>
               
