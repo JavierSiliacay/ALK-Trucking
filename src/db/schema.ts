@@ -153,3 +153,18 @@ export const systemSettings = pgTable('system_settings', {
   key: varchar('key', { length: 255 }).primaryKey(),
   value: varchar('value', { length: 255 }).notNull(),
 });
+
+export const financialRecords = pgTable("financial_records", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  checkNo: varchar("check_no", { length: 255 }),
+  bank: varchar("bank", { length: 255 }), // e.g. BDO, Metrobank, Cash
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull().default("0"),
+  date: timestamp("date").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // "Issuance" or "Deposit"
+  category: varchar("category", { length: 255 }).notNull(),
+  status: varchar("status", { length: 50 }).notNull().default("Pending"), // "Pending", "Cleared", "Cancelled"
+  remarks: text("remarks"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});

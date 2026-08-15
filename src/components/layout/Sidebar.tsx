@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight, LogOut, User } from "lucide-react";
 import TripFormModal from "@/components/trips/TripFormModal";
 import { useTrips } from "@/lib/trips-store";
 import { handleSignOut } from "@/actions/auth";
+import { FINANCIAL_AUTHORIZED_EMAILS } from "@/config/permissions";
 
 const LOGO_URL = "/alk_logo.jpg";
 
@@ -19,7 +20,7 @@ interface NavItem {
   children?: Omit<NavItem, 'children'>[];
 }
 
-const navigation: NavItem[] = [
+const baseNavigation: NavItem[] = [
   { name: "Dashboard", href: "/admin", icon: "dashboard" },
   { name: "Trips", href: "/admin/trips", icon: "local_shipping" },
   { 
@@ -45,12 +46,22 @@ export default function Sidebar() {
   const [mounted, setMounted] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false);
+
+  const navigation = React.useMemo(() => {
+    const nav = [...baseNavigation];
+    if (session?.user?.email && FINANCIAL_AUTHORIZED_EMAILS.includes(session.user.email)) {
+      nav.splice(nav.length - 1, 0, {
+        name: "Financial", href: "/admin/financial", icon: "account_balance"
+      });
+    }
+    return nav;
+  }, [session?.user?.email]);
   
   // Track which folders are open (by item name)
   // By default, open the folder if we are currently inside it
   const [openFolders, setOpenFolders] = useState<string[]>(() => {
     const initialOpen: string[] = [];
-    navigation.forEach(item => {
+    baseNavigation.forEach(item => {
       if (item.children?.some(child => pathname.startsWith(child.href))) {
         initialOpen.push(item.name);
       }

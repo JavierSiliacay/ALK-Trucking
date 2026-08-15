@@ -4,6 +4,8 @@ import { getTrips } from "@/actions/trips";
 import { getMasterData } from "@/actions/master";
 import { TripsProvider } from "@/lib/trips-store";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   // NOTE: Auth guard is temporarily disabled for UI preview.
   // Restore the auth() check before database integration phase.

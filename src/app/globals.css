@@ -65,11 +65,23 @@ body {
 }
 
 @media print {
+  @page {
+    margin: 0.5cm;
+    size: A4 portrait;
+  }
+  
   header, aside, nav, .no-print, [class*="Header"], [class*="Sidebar"] {
     display: none !important;
   }
+  
   body {
     background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+  
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
   }
 }
 

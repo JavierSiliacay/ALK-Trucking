@@ -36,6 +36,8 @@ export default function SettingsPage() {
 
   const [isAutoworxSyncEnabled, setIsAutoworxSyncEnabled] = useState(false);
   const [isSettingLoading, setIsSettingLoading] = useState(false);
+  const [lowBalanceThreshold, setLowBalanceThreshold] = useState("50000");
+  const [isThresholdSaving, setIsThresholdSaving] = useState(false);
 
   useEffect(() => {
     if (activeTab === "access") {
@@ -50,6 +52,9 @@ export default function SettingsPage() {
     setIsSettingLoading(true);
     const setting = await getSystemSetting("ENABLE_AUTOWORX_SYNC", "true");
     setIsAutoworxSyncEnabled(setting === "true");
+    
+    const threshold = await getSystemSetting("FINANCIAL_LOW_BALANCE_THRESHOLD", "50000");
+    setLowBalanceThreshold(threshold);
     setIsSettingLoading(false);
   };
 
@@ -180,6 +185,22 @@ export default function SettingsPage() {
     setIsSettingLoading(false);
   };
 
+  const handleSaveThreshold = async () => {
+    if (!isDeveloper) {
+      setShowDeveloperModal(true);
+      return;
+    }
+    
+    setIsThresholdSaving(true);
+    const res = await updateSystemSetting("FINANCIAL_LOW_BALANCE_THRESHOLD", lowBalanceThreshold);
+    if (res.success) {
+      toast.success("Low Balance Threshold updated successfully!");
+    } else {
+      toast.error("Failed to update threshold");
+    }
+    setIsThresholdSaving(false);
+  };
+
   // Filtering
   const filteredDrivers = masterData.drivers.filter(d => d.toLowerCase().includes(searchQuery.toLowerCase()));
   const filteredHelpers = masterData.helpers.filter(h => h.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -250,11 +271,11 @@ export default function SettingsPage() {
           className={`p-6 rounded-2xl cursor-pointer border-2 transition-all flex items-center gap-4 ${activeTab === "integrations" ? "bg-purple-50 border-purple-800 shadow-md" : "bg-white border-slate-200 hover:border-slate-300"}`}
         >
           <div className={`p-3 rounded-xl ${activeTab === "integrations" ? "bg-purple-800 text-white" : "bg-slate-100 text-slate-500"}`}>
-            <LinkIcon className="w-6 h-6" />
+            <Sparkles className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="font-extrabold text-slate-900">Integrations</h3>
-            <p className="text-xs text-slate-500 font-bold">Cross-System Sync</p>
+            <h3 className="font-extrabold text-slate-900">System</h3>
+            <p className="text-xs text-slate-500 font-bold">Integrations & Rules</p>
           </div>
         </div>
       </div>
@@ -465,6 +486,7 @@ export default function SettingsPage() {
               {isSettingLoading ? (
                 <div className="py-10 text-center text-slate-400 text-sm font-bold">Loading configurations...</div>
               ) : (
+                <>
                 <div className="bg-white border border-slate-200 p-6 rounded-2xl flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
                   <div className="max-w-2xl">
                     <h3 className="font-black text-lg text-slate-900 mb-2 flex items-center gap-2">
@@ -492,6 +514,43 @@ export default function SettingsPage() {
                     />
                   </button>
                 </div>
+                
+                <div className="bg-white border border-slate-200 p-6 rounded-2xl flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
+                  <div className="max-w-2xl">
+                    <h3 className="font-black text-lg text-slate-900 mb-2 flex items-center gap-2">
+                      <AlertTriangle className="w-5 h-5 text-rose-600" />
+                      Financial Low Balance Warning Threshold
+                    </h3>
+                    <p className="text-sm text-slate-600 font-medium leading-relaxed mb-4">
+                      When the running balance in the Financial module drops below this amount, a critical warning modal will alert the user to prevent issuing checks with insufficient funds.
+                    </p>
+                  </div>
+                  
+                  <div className="flex gap-2 items-center w-full md:w-auto">
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">₱</span>
+                      <input 
+                        type="text"
+                        value={lowBalanceThreshold ? parseInt(lowBalanceThreshold).toLocaleString() : ""}
+                        onChange={(e) => {
+                          const rawValue = e.target.value.replace(/,/g, '');
+                          if (!isNaN(Number(rawValue))) {
+                            setLowBalanceThreshold(rawValue);
+                          }
+                        }}
+                        className="pl-8 pr-4 py-2 border border-slate-300 rounded-xl font-bold text-slate-900 w-32 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                      />
+                    </div>
+                    <button 
+                      onClick={handleSaveThreshold}
+                      disabled={isThresholdSaving}
+                      className="bg-slate-900 hover:bg-slate-800 text-white font-bold py-2 px-4 rounded-xl transition-colors disabled:opacity-50"
+                    >
+                      {isThresholdSaving ? "Saving..." : "Save"}
+                    </button>
+                  </div>
+                </div>
+                </>
               )}
             </div>
           )}
