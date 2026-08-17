@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { drivers, helpers, trucks } from "@/db/schema";
+import { drivers, helpers, trucks, trips } from "@/db/schema";
 import { eq, or, isNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -41,6 +41,17 @@ export async function archiveHelper(name: string) {
 
 export async function addTruck(unit: string, plateNo: string, owner: string) {
   await db.insert(trucks).values({ unit, plateNo, owner }).onConflictDoUpdate({ target: trucks.plateNo, set: { isActive: true, unit, owner } });
+  revalidatePath("/admin/settings");
+}
+
+export async function editTruck(id: string, unit: string, plateNo: string, owner: string) {
+  const oldTruck = await db.query.trucks.findFirst({ where: eq(trucks.id, id) });
+  
+  if (oldTruck && oldTruck.plateNo) {
+    await db.update(trips).set({ plateNo, unit, owner }).where(eq(trips.plateNo, oldTruck.plateNo));
+  }
+
+  await db.update(trucks).set({ unit, plateNo, owner }).where(eq(trucks.id, id));
   revalidatePath("/admin/settings");
 }
 

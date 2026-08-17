@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { PageShell } from "@/components/ui/PageShell";
 import { useTrips } from "@/lib/trips-store";
-import { UserCheck, Users, Truck, Plus, Search, Archive, AlertTriangle, ShieldCheck, XCircle, Sparkles, Link as LinkIcon, Lock } from "lucide-react";
-import { addDriver, archiveDriver, addHelper, archiveHelper, addTruck, archiveTruck } from "@/actions/master";
+import { UserCheck, Users, Truck, Plus, Search, Archive, AlertTriangle, ShieldCheck, XCircle, Sparkles, Link as LinkIcon, Lock, Pencil, Loader2 } from "lucide-react";
+import { addDriver, archiveDriver, addHelper, archiveHelper, addTruck, archiveTruck, editTruck } from "@/actions/master";
 import { getAuthorizedUsers, addAuthorizedUser, revokeUserAccess } from "@/actions/users";
 import { getSystemSetting, updateSystemSetting } from "@/actions/settings";
 import { toast } from "sonner";
@@ -25,6 +25,9 @@ export default function SettingsPage() {
   const [isDriverModalOpen, setIsDriverModalOpen] = useState(false);
   const [isHelperModalOpen, setIsHelperModalOpen] = useState(false);
   const [isTruckModalOpen, setIsTruckModalOpen] = useState(false);
+  const [editingTruckId, setEditingTruckId] = useState<string | null>(null);
+  const [truckToArchive, setTruckToArchive] = useState<{ id: string, plateNo: string } | null>(null);
+  const [isArchiveTruckModalOpen, setIsArchiveTruckModalOpen] = useState(false);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [showDeveloperModal, setShowDeveloperModal] = useState(false);
 
@@ -118,18 +121,39 @@ export default function SettingsPage() {
     e.preventDefault();
     if (!truckUnit.trim() || !truckPlate.trim()) return;
     setIsSubmitting(true);
-    await addTruck(truckUnit.trim(), truckPlate.trim(), truckOwner);
+    if (editingTruckId) {
+      await editTruck(editingTruckId, truckUnit.trim(), truckPlate.trim(), truckOwner);
+    } else {
+      await addTruck(truckUnit.trim(), truckPlate.trim(), truckOwner);
+    }
     setIsSubmitting(false);
+    setEditingTruckId(null);
     setTruckUnit("");
     setTruckPlate("");
     setTruckOwner("ALK Trucking");
     setIsTruckModalOpen(false);
   };
 
-  const handleArchiveTruck = async (id: string, plateNo: string) => {
-    if (confirm(`Are you sure you want to archive Truck ${plateNo}? It will no longer appear in new trips.`)) {
-      await archiveTruck(id);
-    }
+  const openEditTruckModal = (t: any) => {
+    setEditingTruckId(t.id);
+    setTruckPlate(t.plateNo);
+    setTruckUnit(t.unit);
+    setTruckOwner(t.owner);
+    setIsTruckModalOpen(true);
+  };
+
+  const handleArchiveTruckConfirm = async () => {
+    if (!truckToArchive) return;
+    setIsSubmitting(true);
+    await archiveTruck(truckToArchive.id);
+    setIsSubmitting(false);
+    setIsArchiveTruckModalOpen(false);
+    setTruckToArchive(null);
+  };
+
+  const openArchiveTruckModal = (id: string, plateNo: string) => {
+    setTruckToArchive({ id, plateNo });
+    setIsArchiveTruckModalOpen(true);
   };
 
   const handleAddUser = async (e: React.FormEvent) => {
@@ -299,7 +323,13 @@ export default function SettingsPage() {
             onClick={() => {
               if (activeTab === "drivers") setIsDriverModalOpen(true);
               if (activeTab === "helpers") setIsHelperModalOpen(true);
-              if (activeTab === "trucks") setIsTruckModalOpen(true);
+              if (activeTab === "trucks") {
+                setEditingTruckId(null);
+                setTruckPlate("");
+                setTruckUnit("");
+                setTruckOwner("ALK Trucking");
+                setIsTruckModalOpen(true);
+              }
               if (activeTab === "access") setIsUserModalOpen(true);
             }}
             className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#1e3a8a] text-white font-extrabold text-sm rounded-xl hover:bg-blue-900 transition-colors shadow-md shrink-0"
@@ -377,9 +407,16 @@ export default function SettingsPage() {
 
                 return (
                 <div key={t.id} className="bg-white border border-slate-200 p-5 rounded-2xl group hover:border-[#1e3a8a]/30 transition-colors relative">
-                  <div className="absolute top-4 right-4">
+                  <div className="absolute top-4 right-4 flex gap-1">
                     <button 
-                      onClick={() => handleArchiveTruck(t.id, t.plateNo)}
+                      onClick={() => openEditTruckModal(t)}
+                      className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                      title="Edit Truck"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => openArchiveTruckModal(t.id, t.plateNo)}
                       className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
                       title="Archive Truck"
                     >
@@ -601,9 +638,14 @@ export default function SettingsPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 px-4 py-3 bg-[#1e3a8a] text-white font-extrabold text-sm rounded-xl hover:bg-blue-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                  className="flex-1 px-4 py-3 bg-[#1e3a8a] text-white font-extrabold text-sm rounded-xl hover:bg-blue-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex items-center justify-center gap-2"
                 >
-                  {isSubmitting ? "Saving..." : "Save to Database"}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : "Save to Database"}
                 </button>
               </div>
             </form>
@@ -616,7 +658,7 @@ export default function SettingsPage() {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
           <div className="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="px-6 py-4 border-b border-slate-100 bg-slate-50">
-              <h2 className="font-extrabold text-slate-900">Add New Truck</h2>
+              <h2 className="font-extrabold text-slate-900">{editingTruckId ? "Edit Truck" : "Add New Truck"}</h2>
             </div>
             <form onSubmit={handleAddTruck} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -663,6 +705,7 @@ export default function SettingsPage() {
                   type="button"
                   onClick={() => {
                     setIsTruckModalOpen(false);
+                    setEditingTruckId(null);
                     setTruckPlate("");
                     setTruckUnit("");
                     setTruckOwner("ALK Trucking");
@@ -674,9 +717,14 @@ export default function SettingsPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 px-4 py-3 bg-[#1e3a8a] text-white font-extrabold text-sm rounded-xl hover:bg-blue-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                  className="flex-1 px-4 py-3 bg-[#1e3a8a] text-white font-extrabold text-sm rounded-xl hover:bg-blue-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex items-center justify-center gap-2"
                 >
-                  {isSubmitting ? "Saving..." : "Save to Database"}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : "Save to Database"}
                 </button>
               </div>
             </form>
@@ -741,9 +789,14 @@ export default function SettingsPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 px-4 py-3 bg-[#1e3a8a] text-white font-extrabold text-sm rounded-xl hover:bg-blue-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                  className="flex-1 px-4 py-3 bg-[#1e3a8a] text-white font-extrabold text-sm rounded-xl hover:bg-blue-900 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex items-center justify-center gap-2"
                 >
-                  {isSubmitting ? "Granting..." : "Grant Access"}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Granting...
+                    </>
+                  ) : "Grant Access"}
                 </button>
               </div>
             </form>
@@ -769,6 +822,56 @@ export default function SettingsPage() {
               >
                 Understood
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Archive Truck Warning Modal */}
+      {isArchiveTruckModalOpen && truckToArchive && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-rose-600" />
+              <h2 className="font-extrabold text-slate-900">Archive Truck {truckToArchive.plateNo}?</h2>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-rose-50 p-4 rounded-xl border border-rose-100">
+                <p className="text-sm font-bold text-rose-800 leading-relaxed uppercase tracking-wide mb-2 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" /> 
+                  Warning: Critical Action
+                </p>
+                <p className="text-xs font-medium text-rose-700 leading-relaxed">
+                  Are you absolutely sure you want to archive this truck? Archiving it means it will no longer appear in new trips. While it will not permanently delete historical data, it could severely disrupt connected data, maintenance records, and inventory transactions linked to this specific truck.
+                </p>
+                <p className="text-xs font-black text-rose-800 mt-3 uppercase">
+                  Proceed with extreme caution!
+                </p>
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsArchiveTruckModalOpen(false);
+                    setTruckToArchive(null);
+                  }}
+                  className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 font-extrabold text-sm rounded-xl hover:bg-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleArchiveTruckConfirm}
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-3 bg-rose-600 text-white font-extrabold text-sm rounded-xl hover:bg-rose-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Archiving...
+                    </>
+                  ) : "Archive Truck"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
