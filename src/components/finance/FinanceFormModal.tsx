@@ -12,16 +12,14 @@ const CATEGORIES = [
   "Rental Yarda",
   "Diesel",
   "Advances from Autoworx",
+  "Receivables",
+  "Payables",
   "Custom"
 ];
 
 const BANKS = [
   "BDO",
-  "Metrobank",
-  "BPI",
-  "Security Bank",
-  "Chinabank",
-  "Cash",
+  "PBB",
   "Custom"
 ];
 
@@ -289,6 +287,13 @@ export default function FinanceFormModal({ onClose, onSave, initialRecord, isVie
                   type="date" 
                   value={date} 
                   onChange={(e) => setDate(e.target.value)}
+                  onClick={(e) => {
+                    try {
+                      if ('showPicker' in e.target) {
+                        (e.target as any).showPicker();
+                      }
+                    } catch (err) {}
+                  }}
                   className="w-full bg-white border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 shadow-sm"
                   required
                 />

@@ -46,7 +46,7 @@ export default function FinancialModulePage() {
   }, []);
 
   // Dynamically extract unique categories from loaded records, plus default categories
-  const defaultCategories = ["Payroll", "Cash Advance", "Rental Yarda", "Diesel", "Advances from Autoworx"];
+  const defaultCategories = ["Payroll", "Cash Advance", "Rental Yarda", "Diesel", "Advances from Autoworx", "Receivables", "Payables"];
   const uniqueCategories = Array.from(new Set([...defaultCategories, ...records.map(r => r.category)])).filter(Boolean).sort();
 
   const filteredRecords = records.filter(r => {
