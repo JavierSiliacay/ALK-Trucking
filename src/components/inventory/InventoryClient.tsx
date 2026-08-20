@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useSession } from "next-auth/react";
-import { PackageOpen, ArrowUpRight, ArrowDownRight, Plus, Eye, X, Edit, Trash2, Edit2, Lock, Unlock } from "lucide-react";
+import { PackageOpen, ArrowUpRight, ArrowDownRight, Plus, Eye, X, Edit, Trash2, Edit2, Lock, Unlock, Printer } from "lucide-react";
 import { addInventoryItem, recordStockIn, recordStockOut, deleteInventoryTransaction, updateStockIn, updateStockOut, updateInventoryItem, deleteInventoryItem, toggleSupplyLock } from "@/actions/inventory";
 import { toast } from "sonner";
 import { formatDateLong } from "@/lib/utils";
@@ -81,6 +81,10 @@ export default function InventoryClient({
   // Restricted Modal states
   const [restrictedItem, setRestrictedItem] = useState<InventoryItem | null>(null);
   const [isRestrictedModalOpen, setIsRestrictedModalOpen] = useState(false);
+
+  // Print Modal states
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [printStockFilter, setPrintStockFilter] = useState("all");
 
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -234,18 +238,29 @@ export default function InventoryClient({
 
   return (
     <div className="p-6 max-w-[1440px] mx-auto w-full space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+      <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="font-extrabold text-2xl text-[#00193c] font-manrope">Inventory Management</h2>
-          <p className="text-[#43474f] text-xs mt-0.5">Manage stock levels, log deliveries, and track dispensing.</p>
+          <h1 className="text-2xl font-black text-[#00193c] tracking-tight">Inventory Management</h1>
+          <p className="text-sm font-medium text-slate-500 mt-1">Manage stock levels, log deliveries, and track dispensing.</p>
         </div>
-        <button
-          onClick={() => setIsAddItemOpen(true)}
-          className="bg-[#1e3a8a] text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-[#1e3a8a]/90 transition-colors shadow-sm flex items-center justify-center"
-        >
-          <Plus className="w-4 h-4 mr-1.5" />
-          Add Supply Type
-        </button>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <button 
+            onClick={() => setIsPrintModalOpen(true)}
+            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white border-2 border-[#1e3a8a] text-[#1e3a8a] px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-slate-50 transition-all"
+          >
+            <Printer className="w-4 h-4" />
+            Print Report
+          </button>
+          {isDeveloper && (
+            <button 
+              onClick={() => setIsAddItemOpen(true)}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-[#1e3a8a] text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-[#1e3a8a]/90 transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              Add Supply Type
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -594,9 +609,18 @@ export default function InventoryClient({
                 <h3 className="font-bold text-lg">{selectedItem.name} Ledger</h3>
                 <p className="text-blue-200 text-xs mt-0.5">Complete history of Stock-In and Stock-Out transactions.</p>
               </div>
-              <button onClick={() => setIsLedgerOpen(false)} className="text-white/60 hover:text-white bg-white/10 p-1.5 rounded-full shadow-sm transition-colors">
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => window.open(`/print/ledger/${selectedItem.id}`, '_blank')}
+                  className="flex items-center gap-1.5 bg-white text-[#00193c] px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-slate-100 transition-colors"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  Print Ledger
+                </button>
+                <button onClick={() => setIsLedgerOpen(false)} className="text-white/60 hover:text-white bg-white/10 p-1.5 rounded-full shadow-sm transition-colors">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
             
             <div className="flex-1 overflow-auto p-0 bg-slate-50/50">
@@ -723,6 +747,50 @@ export default function InventoryClient({
                 Save Changes
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Print Settings Modal */}
+      {isPrintModalOpen && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="font-bold text-[#00193c] flex items-center gap-2">
+                <Printer className="w-4 h-4" /> Print Settings
+              </h3>
+              <button onClick={() => setIsPrintModalOpen(false)} className="text-slate-400 hover:text-slate-600 bg-white p-1 rounded-full shadow-sm">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Stock Filter</label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
+                    <input type="radio" name="stockFilter" value="all" checked={printStockFilter === "all"} onChange={() => setPrintStockFilter("all")} className="w-4 h-4 text-[#1e3a8a]" />
+                    <span className="text-sm font-bold text-slate-700">All Items</span>
+                  </label>
+                  <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
+                    <input type="radio" name="stockFilter" value="in_stock" checked={printStockFilter === "in_stock"} onChange={() => setPrintStockFilter("in_stock")} className="w-4 h-4 text-[#1e3a8a]" />
+                    <span className="text-sm font-bold text-slate-700">In-Stock Only</span>
+                  </label>
+                  <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors">
+                    <input type="radio" name="stockFilter" value="out_of_stock" checked={printStockFilter === "out_of_stock"} onChange={() => setPrintStockFilter("out_of_stock")} className="w-4 h-4 text-[#1e3a8a]" />
+                    <span className="text-sm font-bold text-slate-700">Out of Stock Only</span>
+                  </label>
+                </div>
+              </div>
+              <button 
+                onClick={() => {
+                  window.open(`/print/inventory?stock_level=${printStockFilter}`, '_blank');
+                  setIsPrintModalOpen(false);
+                }}
+                className="w-full bg-[#1e3a8a] text-white py-3 rounded-xl font-bold shadow-md hover:bg-[#1e3a8a]/90 transition-all flex items-center justify-center gap-2"
+              >
+                <Printer className="w-4 h-4" /> Generate Print
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -43,6 +43,8 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { addTrip } = useTrips();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const effectivelyCollapsed = isCollapsed && !isHovered;
   const [mounted, setMounted] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false);
@@ -80,7 +82,7 @@ export default function Sidebar() {
   };
 
   const toggleFolder = (name: string) => {
-    if (isCollapsed) {
+    if (effectivelyCollapsed) {
       setIsCollapsed(false);
       setOpenFolders(prev => prev.includes(name) ? prev : [...prev, name]);
     } else {
@@ -91,15 +93,17 @@ export default function Sidebar() {
   return (
     <>
       <aside
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         className={`h-screen relative bg-[#00193c] text-white flex flex-col py-5 shadow-xl transition-all duration-300 ease-in-out shrink-0 z-40 ${
-          isCollapsed ? "w-16" : "w-56"
+          effectivelyCollapsed ? "w-16" : "w-56"
         }`}
       >
         {/* CENTER ARROW TOGGLE BUTTON */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-[#00193c] border-2 border-blue-400/40 text-white rounded-full flex items-center justify-center cursor-pointer shadow-md hover:scale-110 hover:border-blue-400 hover:bg-[#002d62] transition-all z-50"
-          title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          title={isCollapsed ? "Pin Sidebar Open" : "Collapse Sidebar"}
         >
           {isCollapsed ? (
             <ChevronRight className="w-3.5 h-3.5 text-blue-300" />
@@ -109,11 +113,11 @@ export default function Sidebar() {
         </button>
 
         {/* Brand Header */}
-        <div className={`px-4 mb-6 flex items-center gap-2.5 ${isCollapsed ? "justify-center px-1" : ""}`}>
-          <div className={`rounded-lg overflow-hidden bg-white p-0.5 shadow-sm shrink-0 ${isCollapsed ? "w-8 h-8" : "w-9 h-9"}`}>
+        <div className={`px-4 mb-6 flex items-center gap-2.5 ${effectivelyCollapsed ? "justify-center px-1" : ""}`}>
+          <div className={`rounded-lg overflow-hidden bg-white p-0.5 shadow-sm shrink-0 transition-all duration-300 ${effectivelyCollapsed ? "w-8 h-8" : "w-9 h-9"}`}>
             <img src={LOGO_URL} alt="ALK Trucking Logo" className="w-full h-full object-contain" />
           </div>
-          {!isCollapsed && (
+          {!effectivelyCollapsed && (
             <div className="overflow-hidden">
               <h1 className="font-extrabold text-white text-sm leading-tight">Fleet Management</h1>
               <p className="text-[10px] text-blue-300/80 font-medium">ALK Trucking Services</p>
@@ -136,21 +140,21 @@ export default function Sidebar() {
                       active
                         ? "bg-[#002d62]/50 text-white border border-blue-400/10"
                         : "text-slate-300 hover:text-white hover:bg-white/10"
-                    } ${isCollapsed ? "justify-center px-0" : ""}`}
-                    title={isCollapsed ? item.name : undefined}
+                    } ${effectivelyCollapsed ? "justify-center px-0" : ""}`}
+                    title={effectivelyCollapsed ? item.name : undefined}
                   >
                     <div className="flex items-center gap-3">
                       <span className="material-symbols-outlined text-[20px] shrink-0">{item.icon}</span>
-                      {!isCollapsed && <span className="whitespace-nowrap">{item.name}</span>}
+                      {!effectivelyCollapsed && <span className="whitespace-nowrap">{item.name}</span>}
                     </div>
-                    {!isCollapsed && (
+                    {!effectivelyCollapsed && (
                       <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`} />
                     )}
                   </button>
                   
                   {/* Children Items */}
-                  {!isCollapsed && isOpen && (
-                    <div className="mt-1 ml-4 pl-3 border-l border-white/10 space-y-1 flex flex-col">
+                  {isOpen && !effectivelyCollapsed && (
+                    <div className="mt-1 ml-4 border-l-2 border-[#002d62] flex flex-col space-y-0.5 pl-2 animate-in slide-in-from-top-2 duration-200">
                       {item.children.map(child => {
                         const childActive = pathname.startsWith(child.href);
                         return (
@@ -180,13 +184,13 @@ export default function Sidebar() {
                 href={item.href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-bold transition-all duration-200 ${
                   active
-                    ? "bg-[#002d62] text-white shadow-sm border border-blue-400/20"
+                    ? "bg-[#002d62]/80 text-white border-l-4 border-blue-400"
                     : "text-slate-300 hover:text-white hover:bg-white/10"
-                } ${isCollapsed ? "justify-center px-0" : ""}`}
-                title={isCollapsed ? item.name : undefined}
+                } ${effectivelyCollapsed ? "justify-center px-0 border-l-0" : ""}`}
+                title={effectivelyCollapsed ? item.name : undefined}
               >
                 <span className="material-symbols-outlined text-[20px] shrink-0">{item.icon}</span>
-                {!isCollapsed && <span className="whitespace-nowrap">{item.name}</span>}
+                {!effectivelyCollapsed && <span className="whitespace-nowrap">{item.name}</span>}
               </Link>
             );
           })}
@@ -195,32 +199,26 @@ export default function Sidebar() {
         {/* User Profile & Sign Out Footer */}
         {mounted && (
           <div className="p-3 border-t border-white/10 mt-auto">
-            {!isCollapsed ? (
-              <div className="flex flex-col gap-3">
-                {session?.user && (
-                  <div className="flex items-center gap-2.5 bg-white/5 rounded-xl p-2.5">
-                    <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-blue-900 flex items-center justify-center">
-                      {session.user.image ? (
-                        <img src={session.user.image} alt={session.user.name || "User"} className="w-full h-full object-cover" />
-                      ) : (
-                        <User className="w-4 h-4 text-blue-300" />
-                      )}
-                    </div>
-                    <div className="overflow-hidden">
-                      <p className="text-white text-xs font-bold truncate">{session.user.name}</p>
-                      <p className="text-blue-300 text-[10px] truncate">{session.user.email}</p>
-                    </div>
-                  </div>
-                )}
-                <button
-                  onClick={() => setIsSignOutModalOpen(true)}
-                  className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-400 rounded-lg text-xs font-bold transition-all"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  Sign Out
-                </button>
+            <div className={`flex items-center gap-3 bg-[#001229] p-3 rounded-xl border border-blue-400/10 ${effectivelyCollapsed ? 'justify-center' : ''}`}>
+              <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0">
+                <User className="w-4 h-4" />
               </div>
-            ) : (
+              {!effectivelyCollapsed && mounted && session?.user && (
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-white truncate">{session.user.name}</p>
+                  <p className="text-[10px] text-slate-400 truncate">{session.user.email}</p>
+                </div>
+              )}
+              {!effectivelyCollapsed && (
+                <button 
+                  onClick={() => setIsSignOutModalOpen(true)}
+                  className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-colors"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              )}
+              {effectivelyCollapsed && mounted && (
               <button
                 onClick={() => setIsSignOutModalOpen(true)}
                 className="w-full flex justify-center py-2 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white rounded-lg transition-all"
@@ -229,6 +227,7 @@ export default function Sidebar() {
                 <LogOut className="w-4 h-4" />
               </button>
             )}
+            </div>
           </div>
         )}
       </aside>

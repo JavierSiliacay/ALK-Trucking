@@ -168,3 +168,21 @@ export const financialRecords = pgTable("financial_records", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const reportManualRecords = pgTable("reports_manual_records", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  type: varchar("type", { length: 50 }).notNull(), // "Sale" or "Expense"
+  category: varchar("category", { length: 255 }).notNull(),
+  chargeTo: varchar("charge_to", { length: 255 }), // Client Name
+  invoiceNo: varchar("invoice_no", { length: 255 }),
+  suppliersName: varchar("suppliers_name", { length: 255 }),
+  unitVehicle: varchar("unit_vehicle", { length: 255 }),
+  plateNo: varchar("plate_no", { length: 255 }),
+  paymentType: varchar("payment_type", { length: 100 }),
+  expenseDescription: text("expense_description"),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull().default("0"),
+  date: timestamp("date").notNull(),
+  remarks: text("remarks"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});

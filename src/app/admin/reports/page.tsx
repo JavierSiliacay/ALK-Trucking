@@ -11,6 +11,11 @@ import {
 } from "lucide-react";
 import TripInspectorModal from "@/components/trips/TripInspectorModal";
 import DigitalPaperForm from "@/components/trips/DigitalPaperForm";
+import AddReportRecordModal from "@/components/reports/AddReportRecordModal";
+import ManualRecordInspectorModal from "@/components/reports/ManualRecordInspectorModal";
+import { getReportManualEntries, deleteReportManualEntry } from "@/actions/reportsManual";
+import { Plus } from "lucide-react";
+import { toast } from "sonner";
 
 type ReportPeriod = "daily" | "weekly" | "monthly" | "yearly" | "overall" | "custom";
 
@@ -19,7 +24,28 @@ const CATEGORIES = [
   "DRIVER & HELPER WAGES",
   "MAINTENANCE & REPAIR",
   "INVENTORY SUPPLY",
-  "OTHER / MISC"
+  "OTHER / MISC",
+  "PAYROLL",
+  "EMPLOYEES BENEFITS",
+  "RENTALS",
+  "TAXES",
+  "UTILITIES",
+  "TELEPHONE/INTERNET",
+  "REPAIR AND MAINTENANCE",
+  "SHOP PARTS AND GOODS",
+  "OFFICE EXPENSES",
+  "UNIFORMS",
+  "INSURANCE",
+  "REPRESENTATIONS",
+  "PROFESSIONAL FEES",
+  "MEALS AND ENTERTAINMENTS",
+  "FOODS",
+  "BUILDING MAINTENANCE",
+  "IT",
+  "ADVERTISING/MARKETING",
+  "OTHER/MISCELLANEOUS",
+  "ASSET SALES",
+  "CUSTOM"
 ];
 
 const CATEGORY_DESCRIPTIONS: Record<string, string> = {
@@ -27,7 +53,28 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   "DRIVER & HELPER WAGES": "ALLOWANCES, DRIVER RATES, HELPER 1/2 RATES",
   "MAINTENANCE & REPAIR": "EXTERNAL SHOP REPAIRS AND MANUAL ENTRIES",
   "INVENTORY SUPPLY": "ALL TRUCK STOCK OUTS FROM INVENTORY",
-  "OTHER / MISC": "MISCELLANEOUS EXPENSES FROM TRIPS"
+  "OTHER / MISC": "MISCELLANEOUS EXPENSES FROM TRIPS",
+  "PAYROLL": "CORPORATE PAYROLL",
+  "EMPLOYEES BENEFITS": "EMPLOYEE BENEFITS",
+  "RENTALS": "PROPERTY OR EQUIPMENT RENTALS",
+  "TAXES": "GOVERNMENT TAXES AND FEES",
+  "UTILITIES": "WATER, ELECTRICITY, ETC.",
+  "TELEPHONE/INTERNET": "COMMUNICATIONS",
+  "REPAIR AND MAINTENANCE": "CORPORATE REPAIRS",
+  "SHOP PARTS AND GOODS": "SHOP TOOLS AND GOODS",
+  "OFFICE EXPENSES": "OFFICE SUPPLIES",
+  "UNIFORMS": "STAFF UNIFORMS",
+  "INSURANCE": "VEHICLE OR CORPORATE INSURANCE",
+  "REPRESENTATIONS": "REPRESENTATION EXPENSES",
+  "PROFESSIONAL FEES": "LEGAL OR PROFESSIONAL FEES",
+  "MEALS AND ENTERTAINMENTS": "MEALS AND ENTERTAINMENT",
+  "FOODS": "FOOD EXPENSES",
+  "BUILDING MAINTENANCE": "FACILITY MAINTENANCE",
+  "IT": "IT AND SOFTWARE",
+  "ADVERTISING/MARKETING": "MARKETING EXPENSES",
+  "OTHER/MISCELLANEOUS": "OTHER CORPORATE MISC",
+  "ASSET SALES": "BEST FOR SELLING COMPANY EQUIPMENT LIKE A CAR, OLD TIRES, OR SCRAP METAL",
+  "CUSTOM": "CUSTOM EXPENSE"
 };
 
 interface UnifiedExpense {
@@ -39,6 +86,10 @@ interface UnifiedExpense {
   plate: string;
   amount: number;
   sourceTrip?: Trip;
+  isManual?: boolean;
+  id?: string;
+  rawManualRecord?: any;
+  recordType?: "Expense" | "Sale";
 }
 
 function formatWeekRange(weekStr: string) {
@@ -60,13 +111,41 @@ export default function ReportsPage() {
   const { trips } = useTrips();
   const [stockOuts, setStockOuts] = useState<any[]>([]);
   const [maintenanceRecords, setMaintenanceRecords] = useState<any[]>([]);
+  const [manualEntries, setManualEntries] = useState<any[]>([]);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [inspectingTrip, setInspectingTrip] = useState<Trip | null>(null);
   const [viewingPaperTrip, setViewingPaperTrip] = useState<Trip | null>(null);
   const [selectedOverheadCategory, setSelectedOverheadCategory] = useState<string | null>(null);
+  const [editingManualRecord, setEditingManualRecord] = useState<any>(null);
+  const [inspectingManualRecord, setInspectingManualRecord] = useState<any>(null);
+  const [recordToDelete, setRecordToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
-  useEffect(() => {
+  const handleDeleteManualRecord = async (id: string) => {
+    setIsDeleting(id);
+    setRecordToDelete(null);
+    try {
+      // Add a small delay so the animation can play out before removing data
+      await new Promise(resolve => setTimeout(resolve, 300));
+      await deleteReportManualEntry(id);
+      loadData();
+      toast.success("Record deleted successfully!");
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to delete record.");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  const loadData = () => {
     getAllStockOuts().then(data => setStockOuts(data));
     getMaintenanceRecords().then(data => setMaintenanceRecords(data));
+    getReportManualEntries().then(data => setManualEntries(data));
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   const [viewMode, setViewMode] = useState<"detailed" | "summary">("summary");
@@ -200,9 +279,37 @@ export default function ReportsPage() {
     });
   };
 
+  const getFilteredManualEntries = () => {
+    return manualEntries.filter((m: any) => {
+      const mDateStr = new Date(m.date).toISOString().split("T")[0];
+      const mDate = new Date(m.date);
+
+      if (reportPeriod === "daily") return mDateStr === selectedDay;
+      if (reportPeriod === "weekly") {
+        if (!selectedWeek || !selectedWeek.includes('-W')) return false;
+        const [yearStr, weekStr] = selectedWeek.split('-W');
+        const year = parseInt(yearStr, 10);
+        const week = parseInt(weekStr, 10);
+        return getISOWeekYear(mDate) === year && getISOWeek(mDate) === week;
+      }
+      if (reportPeriod === "monthly") {
+        const key = `${mDate.getFullYear()}-${String(mDate.getMonth() + 1).padStart(2, '0')}`;
+        return key === selectedMonth;
+      }
+      if (reportPeriod === "yearly") return mDate.getFullYear().toString() === selectedYear;
+      if (reportPeriod === "overall") return true; 
+      if (reportPeriod === "custom") {
+        if (!customStartDate || !customEndDate) return true;
+        return mDateStr >= customStartDate && mDateStr <= customEndDate;
+      }
+      return true;
+    });
+  };
+
   const reportTrips = getFilteredTrips();
   const reportStockOuts = getFilteredStockOuts();
   const reportMaintenanceRecords = getFilteredMaintenanceRecords();
+  const reportManualEntriesList = getFilteredManualEntries();
 
   const unifiedExpenses = useMemo(() => {
     const expenses: UnifiedExpense[] = [];
@@ -227,22 +334,23 @@ export default function ReportsPage() {
         else tripMisc += amt;
       });
 
-      if (tripFuel > 0) expenses.push({ date: compDate, category: "FUEL COSTS", desc: `Trip ${t.seqNo} Fuel`, charge: t.customerName, unit: t.unit, plate: t.plateNo, amount: tripFuel, sourceTrip: t });
-      if (tripDriverWages + tripHelperWages > 0) expenses.push({ date: compDate, category: "DRIVER & HELPER WAGES", desc: `Trip ${t.seqNo} Wages`, charge: t.customerName, unit: t.unit, plate: t.plateNo, amount: tripDriverWages + tripHelperWages, sourceTrip: t });
-      if (tripMaintenance > 0) expenses.push({ date: compDate, category: "MAINTENANCE & REPAIR", desc: `Trip ${t.seqNo} Maintenance`, charge: t.customerName, unit: t.unit, plate: t.plateNo, amount: tripMaintenance, sourceTrip: t });
-      if (tripMisc > 0) expenses.push({ date: compDate, category: "OTHER / MISC", desc: `Trip ${t.seqNo} Misc`, charge: t.customerName, unit: t.unit, plate: t.plateNo, amount: tripMisc, sourceTrip: t });
+      if (tripFuel > 0) expenses.push({ date: compDate, category: "FUEL COSTS", desc: `Trip ${t.seqNo} Fuel`, charge: t.customerName, unit: t.unit, plate: t.plateNo, amount: tripFuel, sourceTrip: t, recordType: "Expense" });
+      if (tripDriverWages + tripHelperWages > 0) expenses.push({ date: compDate, category: "DRIVER & HELPER WAGES", desc: `Trip ${t.seqNo} Wages`, charge: t.customerName, unit: t.unit, plate: t.plateNo, amount: tripDriverWages + tripHelperWages, sourceTrip: t, recordType: "Expense" });
+      if (tripMaintenance > 0) expenses.push({ date: compDate, category: "MAINTENANCE & REPAIR", desc: `Trip ${t.seqNo} Maintenance`, charge: t.customerName, unit: t.unit, plate: t.plateNo, amount: tripMaintenance, sourceTrip: t, recordType: "Expense" });
+      if (tripMisc > 0) expenses.push({ date: compDate, category: "OTHER / MISC", desc: `Trip ${t.seqNo} Misc`, charge: t.customerName, unit: t.unit, plate: t.plateNo, amount: tripMisc, sourceTrip: t, recordType: "Expense" });
     });
 
-    reportStockOuts.forEach((tx: any) => {
-      const dateStr = new Date(tx.createdAt).toISOString().split("T")[0];
+    reportStockOuts.forEach((so: any) => {
+      const soDateStr = new Date(so.dateStockOut || so.createdAt).toISOString().split("T")[0];
       expenses.push({
-        date: dateStr,
+        date: soDateStr,
         category: "INVENTORY SUPPLY",
-        desc: `${tx.quantity} ${tx.item?.unit} ${tx.item?.name} (${tx.remarks || "No remarks"})`,
+        desc: `Stock Out: ${so.quantity}x ${so.item?.itemName} (${so.item?.brand || ''})`,
         charge: "-",
-        unit: tx.truck?.unit || tx.truck?.unitNo || "-",
-        plate: tx.truck?.plateNo || "-",
-        amount: Number(tx.totalCost) || 0
+        unit: so.truck?.unit || so.truck?.unitNo || "-",
+        plate: so.truck?.plateNo || "-",
+        amount: Number(so.totalCost) || 0,
+        recordType: "Expense"
       });
     });
 
@@ -256,7 +364,29 @@ export default function ReportsPage() {
         charge: "-",
         unit: m.truck?.unit || m.truck?.unitNo || "-",
         plate: m.truck?.plateNo || "-",
-        amount: Number(m.cost) || 0
+        amount: Number(m.cost) || 0,
+        recordType: "Expense"
+      });
+    });
+
+    reportManualEntriesList.forEach((m: any) => {
+      const dateStr = new Date(m.date).toISOString().split("T")[0];
+      let descText = m.expenseDescription || "";
+      if (m.invoiceNo) descText = descText ? `[Inv: ${m.invoiceNo}] ${descText}` : `Inv: ${m.invoiceNo}`;
+      if (m.suppliersName) descText = descText ? `${descText} (Supplier: ${m.suppliersName})` : `Supplier: ${m.suppliersName}`;
+
+      expenses.push({
+        date: dateStr,
+        category: m.category,
+        desc: descText || "-",
+        charge: m.chargeTo || "-",
+        unit: m.unitVehicle || "-",
+        plate: m.plateNo || "-",
+        amount: Number(m.amount) || 0,
+        isManual: true,
+        id: m.id,
+        rawManualRecord: m,
+        recordType: m.type
       });
     });
 
@@ -275,28 +405,45 @@ export default function ReportsPage() {
     }
     
     return filtered.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [reportTrips, reportStockOuts, reportMaintenanceRecords, searchQuery, selectedFilterCategory]);
+  }, [reportTrips, reportStockOuts, reportMaintenanceRecords, reportManualEntriesList, searchQuery, selectedFilterCategory]);
 
   const categorySummaries = useMemo(() => {
-    const sums: Record<string, number> = {
-      "FUEL COSTS": 0,
-      "DRIVER & HELPER WAGES": 0,
-      "MAINTENANCE & REPAIR": 0,
-      "INVENTORY SUPPLY": 0,
-      "OTHER / MISC": 0
-    };
+    const sums: Record<string, number> = {};
+    
+    CATEGORIES.forEach(cat => {
+      sums[cat] = 0;
+    });
 
     unifiedExpenses.forEach(e => {
-      if (sums[e.category] !== undefined) {
-        sums[e.category] += e.amount;
+      if (e.recordType === "Sale") return; // Skip sales for overhead calculation
+      if (sums[e.category] === undefined) {
+        sums[e.category] = 0;
       }
+      sums[e.category] += e.amount;
     });
 
     return sums;
   }, [unifiedExpenses]);
 
-  const totalFilteredAmount = unifiedExpenses.reduce((acc, e) => acc + e.amount, 0);
-  const totalRevenue = reportTrips.reduce((acc, t) => acc + (Number(t.rate) || 0), 0);
+  const totalFilteredAmount = unifiedExpenses
+    .filter(e => e.recordType !== "Sale")
+    .reduce((acc, e) => acc + e.amount, 0);
+  
+  const filteredTripsForRevenue = useMemo(() => {
+    if (!searchQuery.trim()) return reportTrips;
+    const searchTokens = searchQuery.toLowerCase().split(/\s+/).filter(Boolean);
+    return reportTrips.filter((t: Trip) => {
+      const searchableString = `TRIP REVENUE ${t.customerName} ${t.destination} ${t.unit} ${t.plateNo}`.toLowerCase();
+      return searchTokens.every(token => searchableString.includes(token));
+    });
+  }, [reportTrips, searchQuery]);
+
+  const tripRevenue = filteredTripsForRevenue.reduce((acc, t) => acc + (Number(t.rate) || 0), 0);
+  const salesRevenue = unifiedExpenses
+    .filter((e) => e.recordType === "Sale")
+    .reduce((sum, e) => sum + e.amount, 0);
+    
+  const totalRevenue = tripRevenue + salesRevenue;
   const netProfit = totalRevenue - totalFilteredAmount;
 
   const selectedCategoryTrips = useMemo(() => {
@@ -403,6 +550,9 @@ export default function ReportsPage() {
             <button onClick={() => window.print()} className="flex items-center justify-center bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 h-9 px-3 rounded-md text-sm font-semibold transition-colors">
               <Printer className="w-4 h-4 mr-2" /> Print PDF
             </button>
+            <button onClick={() => setIsAddModalOpen(true)} className="flex items-center justify-center bg-blue-600 text-white border border-transparent hover:bg-blue-700 h-9 px-3 rounded-md text-sm font-semibold transition-colors shadow-sm">
+              <Plus className="w-4 h-4 mr-2" /> Add Record
+            </button>
           </div>
         </div>
 
@@ -427,11 +577,18 @@ export default function ReportsPage() {
               className="px-2.5 py-1 border border-gray-300 rounded-lg text-xs font-bold text-gray-900 bg-gray-50 outline-none cursor-pointer focus:ring-2 focus:ring-blue-500 w-full md:w-auto"
             >
               <option value="ALL">ALL CATEGORIES</option>
-              <option value="FUEL COSTS">FUEL COSTS</option>
-              <option value="DRIVER & HELPER WAGES">DRIVER & HELPER WAGES</option>
-              <option value="MAINTENANCE & REPAIR">MAINTENANCE & REPAIR</option>
-              <option value="INVENTORY SUPPLY">INVENTORY SUPPLY</option>
-              <option value="OTHER / MISC">OTHER / MISC</option>
+              {Object.keys(categorySummaries)
+                .sort((a, b) => {
+                  const idxA = CATEGORIES.indexOf(a);
+                  const idxB = CATEGORIES.indexOf(b);
+                  if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                  if (idxA !== -1) return -1;
+                  if (idxB !== -1) return 1;
+                  return a.localeCompare(b);
+                })
+                .map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
             </select>
           </div>
 
@@ -460,7 +617,7 @@ export default function ReportsPage() {
             className="bg-white border border-gray-200 p-4.5 rounded-xl shadow-sm hover:shadow-md hover:bg-rose-50/30 transition-all cursor-pointer group"
           >
             <div className="flex justify-between items-start mb-2">
-              <span className="text-gray-500 font-bold text-[10px] uppercase tracking-wider group-hover:text-rose-900 transition-colors">Total Overhead</span>
+              <span className="text-gray-500 font-bold text-[10px] uppercase tracking-wider group-hover:text-rose-900 transition-colors">Total Overhead Expenses</span>
               <ArrowRightLeft className="w-5 h-5 text-gray-400 group-hover:text-rose-600 transition-colors" />
             </div>
             <h3 className="font-extrabold text-2xl text-rose-700 mt-0.5 font-mono">
@@ -474,7 +631,7 @@ export default function ReportsPage() {
             className="bg-white border border-gray-200 p-4.5 rounded-xl shadow-sm hover:shadow-md hover:bg-emerald-50/30 transition-all cursor-pointer group"
           >
             <div className="flex justify-between items-start mb-2">
-              <span className="text-gray-500 font-bold text-[10px] uppercase tracking-wider group-hover:text-emerald-900 transition-colors">Trip Revenue</span>
+              <span className="text-gray-500 font-bold text-[10px] uppercase tracking-wider group-hover:text-emerald-900 transition-colors">Trip Revenue / Sales</span>
               <DollarSign className="w-5 h-5 text-emerald-500 group-hover:scale-110 transition-transform" />
             </div>
             <h3 className="font-extrabold text-2xl text-emerald-700 mt-0.5 font-mono">
@@ -591,7 +748,16 @@ export default function ReportsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {CATEGORIES.map((cat, idx) => {
+                    {Object.keys(categorySummaries)
+                      .sort((a, b) => {
+                         const idxA = CATEGORIES.indexOf(a);
+                         const idxB = CATEGORIES.indexOf(b);
+                         if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                         if (idxA !== -1) return -1;
+                         if (idxB !== -1) return 1;
+                         return a.localeCompare(b);
+                      })
+                      .map((cat, idx) => {
                       const amount = categorySummaries[cat] || 0;
                       return (
                         <tr 
@@ -602,7 +768,7 @@ export default function ReportsPage() {
                         >
                           <td className="border border-gray-300 px-2 py-2.5 text-center font-bold text-gray-700">{idx + 1}</td>
                           <td className="border border-gray-300 px-3 py-2.5 font-extrabold text-gray-900 group-hover:text-blue-700 transition-colors">{cat}</td>
-                          <td className="border border-gray-300 px-3 py-2.5 text-[10px] text-gray-700 uppercase font-semibold leading-tight">{CATEGORY_DESCRIPTIONS[cat] || ""}</td>
+                          <td className="border border-gray-300 px-3 py-2.5 text-[10px] text-gray-700 uppercase font-semibold leading-tight">{CATEGORY_DESCRIPTIONS[cat] || "CUSTOM EXPENSE CATEGORY"}</td>
                           <td className="border border-gray-300 px-3 py-2.5 text-right font-mono font-extrabold text-rose-800">
                             {amount > 0 ? `₱${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "-"}
                           </td>
@@ -619,12 +785,28 @@ export default function ReportsPage() {
                     </tr>
                     {selectedFilterCategory === "ALL" && (
                       <>
-                        <tr className="bg-emerald-50 border-t border-emerald-200 font-black text-gray-900 text-sm">
-                          <td colSpan={3} className="border border-emerald-200 px-4 py-3 text-right uppercase tracking-wider text-emerald-900">TRIP REVENUE</td>
+                        <tr 
+                          className="bg-emerald-50 border-t border-emerald-200 font-black text-gray-900 text-sm hover:bg-emerald-100 transition-colors cursor-pointer group"
+                          onClick={() => setSelectedOverheadCategory("REVENUE")}
+                          title="Click to view Trip & Sales Revenue breakdown"
+                        >
+                          <td colSpan={3} className="border border-emerald-200 px-4 py-3 text-right uppercase tracking-wider text-emerald-900 group-hover:text-emerald-800">TRIP REVENUE</td>
                           <td className="border border-emerald-200 px-3 py-3 text-right font-mono text-base text-emerald-700 font-black">
-                            ₱{totalRevenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            ₱{tripRevenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
                         </tr>
+                        {salesRevenue > 0 && (
+                          <tr 
+                            className="bg-emerald-50 font-black text-gray-900 text-sm hover:bg-emerald-100 transition-colors cursor-pointer group"
+                            onClick={() => setSelectedOverheadCategory("REVENUE")}
+                            title="Click to view Trip & Sales Revenue breakdown"
+                          >
+                            <td colSpan={3} className="border border-emerald-200 px-4 py-3 text-right uppercase tracking-wider text-emerald-900 group-hover:text-emerald-800">OTHER SALES REVENUE</td>
+                            <td className="border border-emerald-200 px-3 py-3 text-right font-mono text-base text-emerald-700 font-black">
+                              ₱{salesRevenue.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                          </tr>
+                        )}
                         <tr className="bg-blue-100 border-t-2 border-blue-400 font-black text-gray-900 text-sm">
                           <td colSpan={3} className="border border-blue-300 px-4 py-4 text-right uppercase tracking-wider text-blue-900">NET PROFIT (REVENUE - EXPENSES)</td>
                           <td className="border border-blue-300 px-3 py-4 text-right font-mono text-lg text-blue-800 font-black">
@@ -656,21 +838,26 @@ export default function ReportsPage() {
                       <th className="px-2 py-2 text-[10px]">CHARGE TO</th>
                       <th className="px-2 py-2 text-[10px]">UNIT / PLATE</th>
                       <th className="px-2 py-2 text-[10px] text-right">AMOUNT</th>
+                      <th className="px-2 py-2 text-[10px] text-center print:hidden">ACTIONS</th>
                     </tr>
                   </thead>
                   <tbody>
                     {unifiedExpenses.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-4 py-12 text-center text-gray-500">No expenses found for this period.</td>
+                        <td colSpan={8} className="px-4 py-12 text-center text-gray-500">No expenses found for this period.</td>
                       </tr>
                     ) : (
                       unifiedExpenses.map((expense, index) => (
                         <tr 
                           key={index} 
-                          className="border-b border-gray-100 hover:bg-blue-50/50 transition-colors group cursor-pointer"
+                          className={`border-b border-gray-100 hover:bg-rose-50/40 cursor-pointer ${
+                            isDeleting === expense.id ? "opacity-0 scale-95 bg-rose-100" : ""
+                          } transition-all duration-300`}
                           onClick={() => {
                             if (expense.sourceTrip) {
                               setInspectingTrip(expense.sourceTrip);
+                            } else if (expense.isManual && expense.rawManualRecord) {
+                              setInspectingManualRecord(expense.rawManualRecord);
                             } else {
                               setSelectedOverheadCategory(expense.category);
                             }
@@ -682,8 +869,32 @@ export default function ReportsPage() {
                           <td className="px-2 py-2 text-gray-900 text-xs">{expense.desc}</td>
                           <td className="px-2 py-2 font-medium text-gray-800 text-[11px]">{expense.charge}</td>
                           <td className="px-2 py-2 font-mono text-gray-600 text-[11px]">{expense.unit !== "-" ? `${expense.unit} (${expense.plate})` : "-"}</td>
-                          <td className="px-2 py-2 text-right font-bold text-gray-900 text-xs whitespace-nowrap">
-                            ₱ {expense.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          <td className="px-2 py-2 font-mono text-gray-900 font-bold text-right text-[11px]">
+                            {expense.amount > 0 ? `₱${expense.amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "-"}
+                          </td>
+                          <td className="px-2 py-2 text-center print:hidden">
+                            {expense.isManual && (
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingManualRecord(expense.rawManualRecord);
+                                  }}
+                                  className="p-1 text-blue-600 hover:bg-blue-100 rounded"
+                                >
+                                  <Wrench className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setRecordToDelete(expense.id!);
+                                  }}
+                                  className="p-1 text-rose-600 hover:bg-rose-100 rounded"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            )}
                           </td>
                         </tr>
                       ))
@@ -706,9 +917,19 @@ export default function ReportsPage() {
                               {reportPeriod === 'daily' ? 'Daily' : reportPeriod === 'weekly' ? 'Weekly' : reportPeriod === 'monthly' ? 'Monthly' : reportPeriod === 'yearly' ? 'Yearly' : 'Overall'} Trip Revenue:
                             </td>
                             <td className="px-4 py-3 text-right text-lg text-emerald-700 whitespace-nowrap">
-                              ₱ {totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              ₱ {tripRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
                           </tr>
+                          {salesRevenue > 0 && (
+                            <tr className="bg-emerald-50">
+                              <td colSpan={6} className="px-4 py-3 text-right text-emerald-900 uppercase">
+                                Other Sales Revenue:
+                              </td>
+                              <td className="px-4 py-3 text-right text-lg text-emerald-700 whitespace-nowrap">
+                                ₱ {salesRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                            </tr>
+                          )}
                           <tr className="bg-blue-100 border-t-2 border-blue-400">
                             <td colSpan={6} className="px-4 py-4 text-right text-blue-900 uppercase font-black tracking-wider">
                               NET PROFIT (REVENUE - EXPENSES):
@@ -775,11 +996,11 @@ export default function ReportsPage() {
                     Overhead Audit
                   </span>
                   <h3 className="text-base font-extrabold tracking-tight">
-                    {selectedOverheadCategory === "ALL" ? "All Overhead Expenses" : selectedOverheadCategory === "REVENUE" ? "Trip Revenue Inspector" : `Category Inspector: ${selectedOverheadCategory}`}
+                    {selectedOverheadCategory === "ALL" ? "All Overhead Expenses" : selectedOverheadCategory === "REVENUE" ? "Trip Revenue/Sales Inspector" : `Category Inspector: ${selectedOverheadCategory}`}
                   </h3>
                 </div>
                 <p className="text-xs text-blue-200 mt-0.5">
-                  {selectedOverheadCategory === "REVENUE" ? "Breakdown of all trip revenue generated for selected period" : `Breakdown of ${selectedOverheadCategory === "ALL" ? "all disbursements" : `all disbursements under ${selectedOverheadCategory}`} for selected period`}
+                  {selectedOverheadCategory === "REVENUE" ? "Breakdown of all trip and sales revenue generated for selected period" : `Breakdown of ${selectedOverheadCategory === "ALL" ? "all disbursements" : `all ${selectedOverheadCategory === "ASSET SALES" ? "sales revenue" : "disbursements"} under ${selectedOverheadCategory}`} for selected period`}
                 </p>
               </div>
               <button
@@ -796,15 +1017,15 @@ export default function ReportsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="bg-gray-50 border border-gray-200 p-3 rounded-lg">
                   <span className="text-[10px] font-extrabold text-gray-500 uppercase block tracking-wider">{selectedOverheadCategory === "REVENUE" ? "Revenue Type" : "Overhead Category"}</span>
-                  <span className="text-sm font-black text-gray-900 mt-0.5 block">{selectedOverheadCategory === "REVENUE" ? "FREIGHT EARNED" : selectedOverheadCategory === "ALL" ? "ALL CATEGORIES" : selectedOverheadCategory}</span>
+                  <span className="text-sm font-black text-gray-900 mt-0.5 block">{selectedOverheadCategory === "REVENUE" ? "FREIGHT & SALES" : selectedOverheadCategory === "ALL" ? "ALL CATEGORIES" : selectedOverheadCategory}</span>
                 </div>
                 <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg">
-                  <span className="text-[10px] font-extrabold text-blue-900 uppercase block tracking-wider">{selectedOverheadCategory === "REVENUE" ? "Trips Completed" : "Disbursement Count"}</span>
-                  <span className="text-sm font-black text-blue-900 mt-0.5 block">{selectedOverheadCategory === "REVENUE" ? reportTrips.length : selectedCategoryTrips.length} {selectedOverheadCategory === "REVENUE" ? "Trips" : "Record Items"}</span>
+                  <span className="text-[10px] font-extrabold text-blue-900 uppercase block tracking-wider">{selectedOverheadCategory === "REVENUE" ? "Trips & Sales" : "Disbursement Count"}</span>
+                  <span className="text-sm font-black text-blue-900 mt-0.5 block">{selectedOverheadCategory === "REVENUE" ? reportTrips.length + reportManualEntriesList.filter((m: any) => m.type === "Sale").length : selectedCategoryTrips.length} {selectedOverheadCategory === "REVENUE" ? "Records" : "Record Items"}</span>
                 </div>
-                <div className="bg-rose-50 border border-rose-200 p-3 rounded-lg">
-                  <span className="text-[10px] font-extrabold text-rose-900 uppercase block tracking-wider">{selectedOverheadCategory === "REVENUE" ? "Total Revenue" : "Subtotal Disbursed"}</span>
-                  <span className={`text-base font-black font-mono mt-0.5 block ${selectedOverheadCategory === "REVENUE" ? "text-emerald-700" : "text-rose-800"}`}>
+                <div className={`${(selectedOverheadCategory === "REVENUE" || selectedOverheadCategory === "ASSET SALES") ? "bg-emerald-50 border-emerald-200" : "bg-rose-50 border-rose-200"} border p-3 rounded-lg`}>
+                  <span className={`text-[10px] font-extrabold uppercase block tracking-wider ${(selectedOverheadCategory === "REVENUE" || selectedOverheadCategory === "ASSET SALES") ? "text-emerald-900" : "text-rose-900"}`}>{(selectedOverheadCategory === "REVENUE" || selectedOverheadCategory === "ASSET SALES") ? "Total Revenue" : "Subtotal Disbursed"}</span>
+                  <span className={`text-base font-black font-mono mt-0.5 block ${(selectedOverheadCategory === "REVENUE" || selectedOverheadCategory === "ASSET SALES") ? "text-emerald-700" : "text-rose-800"}`}>
                     ₱{(selectedOverheadCategory === "REVENUE" ? totalRevenue : selectedCategoryTotal).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
                   </span>
                 </div>
@@ -825,28 +1046,52 @@ export default function ReportsPage() {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {selectedOverheadCategory === "REVENUE" ? (
-                      reportTrips.map((t, idx) => (
-                        <tr 
-                          key={idx} 
-                          className="bg-white hover:bg-blue-50/50 transition-colors group cursor-pointer"
-                          onClick={() => {
-                            setSelectedOverheadCategory(null);
-                            setInspectingTrip(t);
-                          }}
-                        >
-                          <td className="p-2.5 text-gray-800 whitespace-nowrap font-medium">
-                            {format(parseISO(t.dateOfTravel.split("T")[0]), "MMM dd, yyyy")}
-                          </td>
-                          <td className="p-2.5 font-bold text-gray-900">
-                            {t.unit} <span className="font-mono text-gray-500 font-normal">({t.plateNo})</span>
-                          </td>
-                          <td className="p-2.5 text-gray-800 text-[11px] font-semibold">{t.customerName}</td>
-                          <td className="p-2.5 text-gray-600 text-[10px] uppercase truncate max-w-[150px]">{t.destination}</td>
-                          <td className="p-2.5 text-right font-mono font-bold text-emerald-700">
-                            ₱{(Number(t.rate) || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
-                          </td>
-                        </tr>
-                      ))
+                      <>
+                        {reportTrips.map((t, idx) => (
+                          <tr 
+                            key={`trip-${idx}`} 
+                            className="bg-white hover:bg-blue-50/50 transition-colors group cursor-pointer"
+                            onClick={() => {
+                              setSelectedOverheadCategory(null);
+                              setInspectingTrip(t);
+                            }}
+                          >
+                            <td className="p-2.5 text-gray-800 whitespace-nowrap font-medium">
+                              {format(parseISO(t.dateOfTravel.split("T")[0]), "MMM dd, yyyy")}
+                            </td>
+                            <td className="p-2.5 font-bold text-gray-900">
+                              {t.unit} <span className="font-mono text-gray-500 font-normal">({t.plateNo})</span>
+                            </td>
+                            <td className="p-2.5 text-gray-800 text-[11px] font-semibold">{t.customerName}</td>
+                            <td className="p-2.5 text-gray-600 text-[10px] uppercase truncate max-w-[150px]">{t.destination}</td>
+                            <td className="p-2.5 text-right font-mono font-bold text-emerald-700">
+                              ₱{(Number(t.rate) || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+                            </td>
+                          </tr>
+                        ))}
+                        {reportManualEntriesList.filter((m: any) => m.type === "Sale").map((sale: any, idx: number) => (
+                          <tr 
+                            key={`sale-${idx}`} 
+                            className="bg-emerald-50/30 hover:bg-emerald-50/80 transition-colors group cursor-pointer"
+                            onClick={() => {
+                              setSelectedOverheadCategory(null);
+                              setInspectingManualRecord(sale);
+                            }}
+                          >
+                            <td className="p-2.5 text-gray-800 whitespace-nowrap font-medium">
+                              {format(new Date(sale.date), "MMM dd, yyyy")}
+                            </td>
+                            <td className="p-2.5 font-bold text-gray-900">
+                              {sale.unitVehicle !== "-" ? sale.unitVehicle : "N/A"} <span className="font-mono text-gray-500 font-normal">({sale.plateNo !== "-" ? sale.plateNo : "N/A"})</span>
+                            </td>
+                            <td className="p-2.5 text-gray-800 text-[11px] font-semibold">{sale.chargeTo !== "-" ? sale.chargeTo : sale.suppliersName !== "-" ? sale.suppliersName : "Manual Sale"}</td>
+                            <td className="p-2.5 text-gray-600 text-[10px] uppercase truncate max-w-[150px]"><span className="text-emerald-700 font-bold">[SALE]</span> {sale.expenseDescription || sale.category}</td>
+                            <td className="p-2.5 text-right font-mono font-bold text-emerald-700">
+                              ₱{(Number(sale.amount) || 0).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
+                            </td>
+                          </tr>
+                        ))}
+                      </>
                     ) : (
                       (selectedOverheadCategory === "ALL" ? unifiedExpenses : selectedCategoryTrips).map((item, idx) => (
                         <tr 
@@ -870,17 +1115,17 @@ export default function ReportsPage() {
                           </td>
                           <td className="p-2.5 text-gray-800 text-[11px] font-semibold">{item.charge}</td>
                           <td className="p-2.5 text-gray-600 text-[10px] uppercase truncate max-w-[150px]">{item.desc}</td>
-                          <td className="p-2.5 text-right font-mono font-bold text-rose-800">
+                          <td className={`p-2.5 text-right font-mono font-bold ${selectedOverheadCategory === "ASSET SALES" ? "text-emerald-700" : "text-rose-800"}`}>
                             ₱{item.amount.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}
                           </td>
                         </tr>
                       ))
                     )}
                     
-                    {selectedOverheadCategory === "REVENUE" && reportTrips.length === 0 && (
+                    {selectedOverheadCategory === "REVENUE" && reportTrips.length === 0 && reportManualEntriesList.filter((m: any) => m.type === "Sale").length === 0 && (
                       <tr>
                         <td colSpan={5} className="p-6 text-center text-gray-400 italic">
-                          No trips recorded for this period.
+                          No trips or sales recorded for this period.
                         </td>
                       </tr>
                     )}
@@ -888,7 +1133,7 @@ export default function ReportsPage() {
                     {selectedOverheadCategory !== "REVENUE" && (selectedOverheadCategory === "ALL" ? unifiedExpenses : selectedCategoryTrips).length === 0 && (
                       <tr>
                         <td colSpan={selectedOverheadCategory === "ALL" ? 6 : 5} className="p-6 text-center text-gray-400 italic">
-                          No disbursements recorded under {selectedOverheadCategory === "ALL" ? "any category" : selectedOverheadCategory} for this period.
+                          No {selectedOverheadCategory === "ASSET SALES" ? "revenue" : "disbursements"} recorded under {selectedOverheadCategory === "ALL" ? "any category" : selectedOverheadCategory} for this period.
                         </td>
                       </tr>
                     )}
@@ -908,6 +1153,59 @@ export default function ReportsPage() {
               >
                 Close Category Inspector
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(isAddModalOpen || editingManualRecord) && (
+        <AddReportRecordModal
+          editData={editingManualRecord}
+          onClose={() => {
+            setIsAddModalOpen(false);
+            setEditingManualRecord(null);
+          }}
+          onSave={() => {
+            setIsAddModalOpen(false);
+            setEditingManualRecord(null);
+            loadData();
+          }}
+        />
+      )}
+
+      {inspectingManualRecord && (
+        <ManualRecordInspectorModal
+          record={inspectingManualRecord}
+          onClose={() => setInspectingManualRecord(null)}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {recordToDelete && (
+        <div className="fixed inset-0 z-[150] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-rose-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <X className="w-8 h-8 text-rose-600" />
+              </div>
+              <h3 className="text-xl font-black text-slate-900 mb-2">Delete Record?</h3>
+              <p className="text-sm text-slate-500 font-medium mb-6">
+                Are you sure you want to permanently delete this manual record? This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setRecordToDelete(null)}
+                  className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDeleteManualRecord(recordToDelete)}
+                  className="flex-1 px-4 py-2.5 bg-rose-600 text-white font-bold rounded-xl hover:bg-rose-700 transition-colors shadow-sm shadow-rose-600/30"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
         </div>
