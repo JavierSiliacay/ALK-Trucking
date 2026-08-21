@@ -59,11 +59,17 @@ export async function recordStockIn(itemId: string, quantity: number, totalCost:
   const currentStock = Number(item.currentStock);
   const currentAvgCost = Number(item.averageUnitCost);
   
-  const currentTotalValue = currentStock * currentAvgCost;
-  const newTotalValue = currentTotalValue + totalCost;
-  const newTotalStock = currentStock + quantity;
+  let newAvgCost = 0;
+  if (currentStock <= 0) {
+    newAvgCost = quantity > 0 ? totalCost / quantity : 0;
+  } else {
+    const currentTotalValue = currentStock * currentAvgCost;
+    const newTotalValue = currentTotalValue + totalCost;
+    const newTotalStock = currentStock + quantity;
+    newAvgCost = newTotalStock > 0 ? newTotalValue / newTotalStock : 0;
+  }
   
-  const newAvgCost = newTotalStock > 0 ? newTotalValue / newTotalStock : 0;
+  const newTotalStock = currentStock + quantity;
   const unitCost = quantity > 0 ? totalCost / quantity : 0;
 
   // Insert transaction
@@ -160,16 +166,16 @@ export async function recalculateItemStats(itemId: string) {
     if (tx.type === "STOCK-IN") {
       const txQty = Number(tx.quantity);
       const txTotalCost = Number(tx.totalCost);
-      const currentTotalValue = currentStock * averageUnitCost;
-      const newTotalValue = currentTotalValue + txTotalCost;
+      
+      if (currentStock <= 0) {
+        averageUnitCost = txQty > 0 ? txTotalCost / txQty : 0;
+      } else {
+        const currentTotalValue = currentStock * averageUnitCost;
+        const newTotalValue = currentTotalValue + txTotalCost;
+        averageUnitCost = newTotalValue / (currentStock + txQty);
+      }
       
       currentStock += txQty;
-      
-      if (currentStock > 0) {
-        averageUnitCost = newTotalValue / currentStock;
-      } else {
-        averageUnitCost = 0;
-      }
       
       // Update unitCost if it was incorrect
       const updatedUnitCost = txQty > 0 ? txTotalCost / txQty : 0;

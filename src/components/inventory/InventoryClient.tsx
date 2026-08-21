@@ -603,7 +603,7 @@ export default function InventoryClient({
       {/* Ledger Modal */}
       {isLedgerOpen && selectedItem && (
         <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
+          <div className="bg-white rounded-3xl shadow-xl w-full max-w-5xl max-h-[85vh] flex flex-col overflow-hidden">
             <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-[#00193c] text-white">
               <div>
                 <h3 className="font-bold text-lg">{selectedItem.name} Ledger</h3>

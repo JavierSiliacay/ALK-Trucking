@@ -134,10 +134,10 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
     estimatedLiters = parsedDistance / ratioDivisor;
   }
 
-  const handleTruckSelect = (unitName: string) => {
-    setUnit(unitName);
-    const found = masterData.trucks.find((t) => t.unit === unitName);
+  const handleTruckSelect = (selectedPlateNo: string) => {
+    const found = masterData.trucks.find((t) => t.plateNo === selectedPlateNo);
     if (found) {
+      setUnit(found.unit);
       setPlateNo(found.plateNo);
       if (found.owner) setOwner(found.owner);
     }
@@ -493,13 +493,13 @@ export default function TripFormModal({ isOpen, onClose, onSave, initialTrip }: 
                     Truck Unit Model <span className="text-red-500">*</span>
                   </label>
                   <select
-                    value={unit}
+                    value={plateNo}
                     onChange={(e) => handleTruckSelect(e.target.value)}
                     className="w-full h-9 px-3 bg-white border border-gray-300 rounded text-sm font-bold text-gray-900 focus:ring-2 focus:ring-blue-500 outline-none"
                   >
                     <option value="" disabled>Select Truck...</option>
                     {masterData.trucks.map((t) => (
-                      <option key={t.plateNo} value={t.unit}>
+                      <option key={t.plateNo} value={t.plateNo}>
                         {t.unit} ({t.plateNo})
                       </option>
                     ))}
