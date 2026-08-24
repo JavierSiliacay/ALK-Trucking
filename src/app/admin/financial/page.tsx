@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, Search, Filter, Lock, Printer } from "lucide-react";
+import { Plus, Search, Filter, Lock, Printer, ArrowUpDown, ArrowUp } from "lucide-react";
 import FinanceFormModal from "@/components/finance/FinanceFormModal";
 import { format, startOfMonth, endOfMonth, isWithinInterval, getISOWeek, getYear, isSameDay } from "date-fns";
 import { getFinancialRecords, deleteFinancialRecord } from "@/actions/finance";
@@ -19,6 +19,7 @@ export default function FinancialModulePage() {
   const [hasDismissedWarning, setHasDismissedWarning] = useState(false);
   const [warningThreshold, setWarningThreshold] = useState(50000);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
+  const [checkNoSorted, setCheckNoSorted] = useState(false); // false = natural order, true = ascending
   
   // Date Filtering State
   const [dateFilterType, setDateFilterType] = useState("all_years"); // "daily", "weekly", "monthly", "yearly", "all_years"
@@ -96,6 +97,20 @@ export default function FinancialModulePage() {
     
     return true;
   });
+
+  // Apply optional ascending sort on Check # (numeric, with non-numeric pushed to end)
+  const displayedRecords = checkNoSorted
+    ? [...filteredRecords].sort((a, b) => {
+        const aNum = parseInt(a.checkNo ?? "", 10);
+        const bNum = parseInt(b.checkNo ?? "", 10);
+        const aValid = !isNaN(aNum);
+        const bValid = !isNaN(bNum);
+        if (aValid && bValid) return aNum - bNum;
+        if (aValid) return -1;
+        if (bValid) return 1;
+        return (a.checkNo ?? "").localeCompare(b.checkNo ?? "");
+      })
+    : filteredRecords;
 
   const totalIssuances = filteredRecords.filter(r => r.type === "Issuance").reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0);
   const totalDeposits = filteredRecords.filter(r => r.type === "Deposit").reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0);
@@ -370,7 +385,20 @@ export default function FinancialModulePage() {
                 <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 print:py-1 print:border-b-blue-200">Category</th>
                 <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 print:py-1 print:border-b-blue-200">Bank</th>
                 <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 print:py-1 print:border-b-blue-200">Name / Supplier</th>
-                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 print:py-1 print:border-b-blue-200">Check #</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 print:py-1 print:border-b-blue-200">
+                  <button
+                    onClick={() => setCheckNoSorted(prev => !prev)}
+                    className={`flex items-center gap-1.5 group transition-colors ${
+                      checkNoSorted ? "text-blue-600" : "text-slate-500 hover:text-slate-700"
+                    }`}
+                    title={checkNoSorted ? "Sorted: ascending — click to reset" : "Click to sort ascending"}
+                  >
+                    CHECK #
+                    {checkNoSorted
+                      ? <ArrowUp className="w-3.5 h-3.5 text-blue-500" />
+                      : <ArrowUpDown className="w-3.5 h-3.5 opacity-40 group-hover:opacity-70 transition-opacity" />}
+                  </button>
+                </th>
                 <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 print:py-1 print:border-b-blue-200">Amount</th>
                 <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 print:py-1 print:border-b-blue-200">Remarks</th>
                 <th className="px-4 py-3 text-right font-bold text-slate-700 uppercase tracking-wider print:hidden w-24">Actions</th>
@@ -384,7 +412,7 @@ export default function FinancialModulePage() {
                   </td>
                 </tr>
               ) : (
-                filteredRecords.map((record) => (
+                displayedRecords.map((record) => (
                   <tr 
                     key={record.id} 
                     onClick={() => {
