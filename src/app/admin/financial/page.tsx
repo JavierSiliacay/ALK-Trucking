@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Plus, Search, Filter, Lock, Printer, ArrowUpDown, ArrowUp } from "lucide-react";
 import FinanceFormModal from "@/components/finance/FinanceFormModal";
 import { format, startOfMonth, endOfMonth, isWithinInterval, getISOWeek, getYear, isSameDay } from "date-fns";
+import { formatInPHTime } from "@/lib/utils";
 import { getFinancialRecords, deleteFinancialRecord } from "@/actions/finance";
 import { getSystemSetting } from "@/actions/settings";
 import { toast } from "sonner";
@@ -190,7 +191,7 @@ export default function FinancialModulePage() {
           </div>
         </div>
         <p className="text-xs font-medium text-slate-500 mt-1">
-          Generated on: {format(new Date(), "MMMM d, yyyy 'at' h:mm a")} 
+          Generated on: {formatInPHTime(new Date())} 
           <span className="font-bold text-slate-900 ml-1.5">{getDateFilterLabel()}</span>
         </p>
       </div>

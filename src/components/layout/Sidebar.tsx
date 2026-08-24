@@ -43,8 +43,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { addTrip } = useTrips();
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const effectivelyCollapsed = isCollapsed && !isHovered;
+  const effectivelyCollapsed = isCollapsed;
   const [mounted, setMounted] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isSignOutModalOpen, setIsSignOutModalOpen] = useState(false);
@@ -93,8 +92,6 @@ export default function Sidebar() {
   return (
     <>
       <aside
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
         className={`h-screen relative bg-[#00193c] text-white flex flex-col py-5 shadow-xl transition-all duration-300 ease-in-out shrink-0 z-40 ${
           effectivelyCollapsed ? "w-16" : "w-56"
         }`}

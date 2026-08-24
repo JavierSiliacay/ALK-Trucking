@@ -1,7 +1,7 @@
 import React from "react";
 import { getInventoryItems, getInventoryTransactions } from "@/actions/inventory";
 import AutoPrint from "@/components/print/AutoPrint";
-import { format } from "date-fns";
+import { formatInPHTime } from "@/lib/utils";
 import Image from "next/image";
 
 export const dynamic = "force-dynamic";
@@ -45,7 +45,7 @@ export default async function PrintLedgerPage({
           </div>
         </div>
         <div className="text-right">
-          <p className="text-sm font-bold">Generated: {format(new Date(), "MMM dd, yyyy - hh:mm a")}</p>
+          <p className="text-sm font-bold">Generated: {formatInPHTime(new Date())}</p>
           <p className="text-xs font-semibold text-gray-500">ALK Trucking Services</p>
         </div>
       </div>
@@ -99,7 +99,7 @@ export default async function PrintLedgerPage({
               return (
                 <tr key={tx.id} className={`border-b border-gray-300 ${idx % 2 === 0 ? 'bg-gray-50/50' : 'bg-white'}`}>
                   <td className="py-1.5 px-1 text-[10px] font-semibold">
-                    {format(new Date(tx.createdAt), "MMM dd, yyyy")}
+                    {formatInPHTime(tx.createdAt, "date")}
                   </td>
                   <td className={`py-1.5 px-1 text-[10px] font-black uppercase ${isStockIn ? 'text-emerald-700' : 'text-rose-700'}`}>
                     {tx.type}

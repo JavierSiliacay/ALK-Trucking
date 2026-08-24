@@ -270,11 +270,11 @@ export default function InventoryClient({
               <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
                 <PackageOpen className="w-6 h-6" />
               </div>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1.5">
                 {isDeveloper && (
                   <button 
                     onClick={() => handleToggleLock(item.id, item.isLocked || false)}
-                    className={`p-1 rounded-md transition-colors ${item.isLocked ? "text-amber-500 hover:text-amber-600 bg-amber-50" : "text-slate-400 hover:text-amber-500"}`}
+                    className={`p-1.5 rounded-lg transition-colors ${item.isLocked ? "text-amber-500 hover:text-amber-600 bg-amber-50" : "text-slate-400 hover:text-amber-500 hover:bg-slate-50"}`}
                     title={item.isLocked ? "Unlock Supply" : "Lock Supply"}
                   >
                     {item.isLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
@@ -283,7 +283,7 @@ export default function InventoryClient({
                 
                 <button 
                   onClick={() => openEditItemModal(item)}
-                  className="text-slate-400 hover:text-blue-600 transition-colors p-1 ml-1"
+                  className="text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors p-1.5 rounded-lg"
                   title="Edit Supply"
                 >
                   <Edit2 className="w-4 h-4" />
@@ -291,7 +291,7 @@ export default function InventoryClient({
                 
                 <button 
                   onClick={() => handleDeleteItem(item.id)}
-                  className="text-slate-400 hover:text-rose-600 transition-colors p-1"
+                  className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors p-1.5 rounded-lg"
                   title="Delete Supply"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -299,10 +299,10 @@ export default function InventoryClient({
                 
                 <button 
                   onClick={() => { setSelectedItem(item); setIsLedgerOpen(true); }}
-                  className="text-slate-400 hover:text-[#1e3a8a] transition-colors p-1 ml-1"
+                  className="text-slate-400 hover:text-[#1e3a8a] hover:bg-blue-50 transition-colors p-1.5 rounded-lg"
                   title="View Ledger"
                 >
-                  <Eye className="w-5 h-5" />
+                  <Eye className="w-4 h-4" />
                 </button>
               </div>
             </div>

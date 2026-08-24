@@ -5,6 +5,7 @@ import { useTrips, Trip } from "@/lib/trips-store";
 import { getAllStockOuts } from "@/actions/inventory";
 import { getMaintenanceRecords } from "@/actions/maintenance";
 import { format, parseISO, getISOWeek, getISOWeekYear, setISOWeek, setISOWeekYear, startOfISOWeek, endOfISOWeek } from "date-fns";
+import { formatInPHTime } from "@/lib/utils";
 import {
   Search, Calendar as CalendarIcon, FileDown, Printer, ListChecks, FileText,
   DollarSign, Wrench, Package, ArrowRightLeft, X
@@ -712,7 +713,7 @@ export default function ReportsPage() {
                     {reportStatus === "All" ? "All Status" : reportStatus}
                   </span>
                 </p>
-                <p className="text-[9px] text-gray-400 font-bold uppercase">Printed on: {format(new Date(), "MMM dd, yyyy - hh:mm a")}</p>
+                <p className="text-[9px] text-gray-400 font-bold uppercase">Printed on: {formatInPHTime(new Date())}</p>
               </div>
             </div>
             

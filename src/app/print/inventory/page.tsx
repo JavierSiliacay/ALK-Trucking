@@ -1,7 +1,7 @@
 import React from "react";
 import { getInventoryItems } from "@/actions/inventory";
 import AutoPrint from "@/components/print/AutoPrint";
-import { format } from "date-fns";
+import { formatInPHTime } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +50,7 @@ export default async function PrintInventoryPage({
           </div>
         </div>
         <div className="text-right">
-          <p className="text-sm font-bold">Generated: {format(new Date(), "MMM dd, yyyy - hh:mm a")}</p>
+          <p className="text-sm font-bold">Generated: {formatInPHTime(new Date())}</p>
           <p className="text-xs font-semibold text-gray-500">ALK Trucking Services</p>
         </div>
       </div>
