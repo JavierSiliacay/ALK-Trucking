@@ -51,7 +51,7 @@ export default function Sidebar() {
 
   const navigation = React.useMemo(() => {
     const nav = [...baseNavigation];
-    if (session?.user?.email && FINANCIAL_AUTHORIZED_EMAILS.includes(session.user.email)) {
+    if (session?.user?.email && FINANCIAL_AUTHORIZED_EMAILS.includes(session.user.email.toLowerCase())) {
       nav.splice(nav.length - 1, 0, {
         name: "Financial", href: "/admin/financial", icon: "account_balance"
       });
@@ -199,35 +199,61 @@ export default function Sidebar() {
         {/* User Profile & Sign Out Footer */}
         {mounted && (
           <div className="p-3 border-t border-white/10 mt-auto">
-            <div className={`flex items-center gap-3 bg-[#001229] p-3 rounded-xl border border-blue-400/10 ${effectivelyCollapsed ? 'justify-center' : ''}`}>
-              <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0">
-                <User className="w-4 h-4" />
-              </div>
-              {!effectivelyCollapsed && mounted && session?.user && (
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-white truncate">{session.user.name}</p>
-                  <p className="text-[10px] text-slate-400 truncate">{session.user.email}</p>
-                </div>
-              )}
-              {!effectivelyCollapsed && (
-                <button 
+            {effectivelyCollapsed ? (
+              /* Collapsed: stacked avatar + logout icon, fully contained */
+              <div className="flex flex-col items-center gap-2">
+                {/* Google profile photo avatar */}
+                {session?.user?.image ? (
+                  <img
+                    src={session.user.image}
+                    alt={session.user.name ?? "User"}
+                    referrerPolicy="no-referrer"
+                    className="w-8 h-8 rounded-full object-cover ring-2 ring-blue-400/20 shrink-0"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0 text-xs font-bold">
+                    {session?.user?.name?.[0]?.toUpperCase() ?? <User className="w-4 h-4" />}
+                  </div>
+                )}
+                <button
                   onClick={() => setIsSignOutModalOpen(true)}
-                  className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-colors"
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-400/10 transition-all"
                   title="Sign Out"
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
-              )}
-              {effectivelyCollapsed && mounted && (
-              <button
-                onClick={() => setIsSignOutModalOpen(true)}
-                className="w-full flex justify-center py-2 bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white rounded-lg transition-all"
-                title="Sign Out"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
+              </div>
+            ) : (
+              /* Expanded: avatar + name/email + logout button in one row */
+              <div className="flex items-center gap-3 bg-[#001229] p-3 rounded-xl border border-blue-400/10">
+                {/* Google profile photo avatar */}
+                {session?.user?.image ? (
+                  <img
+                    src={session.user.image}
+                    alt={session.user.name ?? "User"}
+                    referrerPolicy="no-referrer"
+                    className="w-8 h-8 rounded-full object-cover ring-2 ring-blue-400/20 shrink-0"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-300 flex items-center justify-center shrink-0 text-xs font-bold">
+                    {session?.user?.name?.[0]?.toUpperCase() ?? <User className="w-4 h-4" />}
+                  </div>
+                )}
+                {session?.user && (
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-white truncate">{session.user.name}</p>
+                    <p className="text-[10px] text-slate-400 truncate">{session.user.email}</p>
+                  </div>
+                )}
+                <button
+                  onClick={() => setIsSignOutModalOpen(true)}
+                  className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-400/10 rounded-lg transition-colors shrink-0"
+                  title="Sign Out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
             )}
-            </div>
           </div>
         )}
       </aside>
