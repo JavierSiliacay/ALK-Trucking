@@ -28,9 +28,18 @@ interface FinanceFormModalProps {
   onSave: () => void;
   initialRecord?: any;
   isViewOnly?: boolean;
+  runningBalance?: number;
+  warningThreshold?: number;
 }
 
-export default function FinanceFormModal({ onClose, onSave, initialRecord, isViewOnly = false }: FinanceFormModalProps) {
+export default function FinanceFormModal({
+  onClose,
+  onSave,
+  initialRecord,
+  isViewOnly = false,
+  runningBalance = 0,
+  warningThreshold = 50000
+}: FinanceFormModalProps) {
   const [type, setType] = useState("Issuance");
   const [category, setCategory] = useState("Payroll");
   const [customCategory, setCustomCategory] = useState("");
@@ -40,13 +49,26 @@ export default function FinanceFormModal({ onClose, onSave, initialRecord, isVie
   const [customBank, setCustomBank] = useState("");
   const [checkNo, setCheckNo] = useState("");
   const [amountDisplay, setAmountDisplay] = useState("");
+  const [status, setStatus] = useState("Cleared");
   const [remarks, setRemarks] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Live validation for Pending checks against Threshold
+  const parsedAmount = parseFloat(amountDisplay.replace(/,/g, '') || "0");
+  const isPendingIssuance = type === "Issuance" && status === "Pending";
+  
+  // Calculate resulting balance after this check
+  const oldAmount = (initialRecord && initialRecord.type === "Issuance" && initialRecord.status === "Pending") 
+    ? parseFloat(initialRecord.amount || "0") 
+    : 0;
+  const projectedBalance = runningBalance + oldAmount - parsedAmount;
+  const isThresholdBreached = isPendingIssuance && parsedAmount > 0 && projectedBalance <= warningThreshold;
+
   useEffect(() => {
     if (initialRecord) {
       setType(initialRecord.type || "Issuance");
+      setStatus(initialRecord.status || "Pending");
       
       if (CATEGORIES.includes(initialRecord.category)) {
         setCategory(initialRecord.category);
@@ -70,6 +92,9 @@ export default function FinanceFormModal({ onClose, onSave, initialRecord, isVie
       setAmountDisplay(amountVal ? amountVal.replace(/\B(?=(\d{3})+(?!\d))/g, ',') : "");
       
       setRemarks(initialRecord.remarks || "");
+    } else {
+      // Default to Cleared for new entries; staff can select Pending when issuing unreleased/unprocessed checks
+      setStatus("Cleared");
     }
   }, [initialRecord]);
 
@@ -100,6 +125,7 @@ export default function FinanceFormModal({ onClose, onSave, initialRecord, isVie
     try {
       const payload = {
         type,
+        status,
         category: category === "Custom" ? customCategory : category,
         date: new Date(date).toISOString(),
         name,
@@ -109,14 +135,19 @@ export default function FinanceFormModal({ onClose, onSave, initialRecord, isVie
         remarks
       };
 
+      let res;
       if (initialRecord) {
-        await updateFinancialRecord(initialRecord.id, payload);
-        toast.success("Financial record updated successfully!");
+        res = await updateFinancialRecord(initialRecord.id, payload);
       } else {
-        await createFinancialRecord(payload);
-        toast.success("Financial record saved successfully!");
+        res = await createFinancialRecord(payload);
+      }
+
+      if (!res.success) {
+        toast.error(res.error || "Failed to save financial record.");
+        return;
       }
       
+      toast.success(initialRecord ? "Financial record updated successfully!" : "Financial record saved successfully!");
       onSave();
     } catch (error) {
       console.error(error);
@@ -167,7 +198,7 @@ export default function FinanceFormModal({ onClose, onSave, initialRecord, isVie
           {isViewOnly ? (
             <div className="space-y-4">
               {/* Metrics Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className={`p-4 rounded-xl border ${type === 'Deposit' ? 'bg-emerald-50/70 border-emerald-200' : 'bg-rose-50/70 border-rose-200'}`}>
                   <span className={`text-[10px] font-extrabold uppercase block tracking-wider ${type === 'Deposit' ? 'text-emerald-900' : 'text-rose-900'}`}>
                     {type === 'Deposit' ? 'Deposit Amount' : 'Issuance Amount'}
@@ -175,6 +206,34 @@ export default function FinanceFormModal({ onClose, onSave, initialRecord, isVie
                   <span className={`text-2xl font-black font-mono mt-1 block ${type === 'Deposit' ? 'text-emerald-700' : 'text-rose-700'}`}>
                     ₱{amountDisplay}
                   </span>
+                </div>
+                <div className={`p-4 rounded-xl border ${
+                  status === 'Cleared' 
+                    ? 'bg-emerald-50/70 border-emerald-200' 
+                    : status === 'Cancelled' 
+                    ? 'bg-slate-100 border-slate-300' 
+                    : 'bg-amber-50/70 border-amber-200'
+                }`}>
+                  <span className={`text-[10px] font-extrabold uppercase block tracking-wider ${
+                    status === 'Cleared' 
+                      ? 'text-emerald-900' 
+                      : status === 'Cancelled' 
+                      ? 'text-slate-700' 
+                      : 'text-amber-900'
+                  }`}>
+                    Check / Transaction Status
+                  </span>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                      status === 'Cleared'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : status === 'Cancelled'
+                        ? 'bg-slate-200 text-slate-700 line-through'
+                        : 'bg-amber-100 text-amber-800 animate-pulse'
+                    }`}>
+                      {status === 'Pending' ? '⏳ Pending / Uncleared' : status === 'Cleared' ? '✓ Cleared' : '✕ Cancelled'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -214,8 +273,8 @@ export default function FinanceFormModal({ onClose, onSave, initialRecord, isVie
           ) : (
           <form id="finance-form" onSubmit={handleSubmit} className="space-y-6">
             
-            {/* Type & Category */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Type, Status & Category */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">Record Type <span className="text-red-500">*</span></label>
                 <select 
@@ -226,6 +285,19 @@ export default function FinanceFormModal({ onClose, onSave, initialRecord, isVie
                 >
                   <option value="Issuance">Issuance (Outgoing)</option>
                   <option value="Deposit">Deposit (Incoming)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">Status <span className="text-red-500">*</span></label>
+                <select 
+                  value={status} 
+                  onChange={(e) => setStatus(e.target.value)}
+                  className="w-full bg-white border border-slate-300 text-slate-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 shadow-sm"
+                  required
+                >
+                  <option value="Pending">⏳ Pending / Uncleared</option>
+                  <option value="Cleared">✓ Cleared</option>
+                  <option value="Cancelled">✕ Cancelled / Void</option>
                 </select>
               </div>
               <div>
@@ -346,6 +418,26 @@ export default function FinanceFormModal({ onClose, onSave, initialRecord, isVie
                 />
               </div>
             </div>
+
+            {/* Threshold Validation Warning Banner */}
+            {isThresholdBreached && (
+              <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-rose-600 text-xl shrink-0 mt-0.5">error</span>
+                  <div>
+                    <h4 className="text-xs font-black text-rose-900 uppercase tracking-wide">
+                      Pending Check Restricted
+                    </h4>
+                    <p className="text-xs text-rose-700 mt-1 leading-relaxed">
+                      Issuing this pending check of <strong>₱{parsedAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong> will leave a running balance of <strong>₱{projectedBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>, which reaches or drops below the configured safety threshold of <strong>₱{warningThreshold.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>.
+                    </p>
+                    <p className="text-[11px] text-rose-600 font-medium mt-1">
+                      Current Running Balance: ₱{runningBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             
           </form>
           )}
@@ -380,7 +472,7 @@ export default function FinanceFormModal({ onClose, onSave, initialRecord, isVie
                 <button
                   type="submit"
                   form="finance-form"
-                  disabled={isSaving || isDeleting || !date || !name || !amountDisplay}
+                  disabled={isSaving || isDeleting || !date || !name || !amountDisplay || isThresholdBreached}
                   className="px-6 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-300 shadow-md shadow-blue-500/30 flex items-center gap-2 disabled:opacity-50 disabled:shadow-none"
                 >
                   {isSaving ? (

@@ -568,14 +568,22 @@ export default function SettingsPage() {
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">₱</span>
                       <input 
                         type="text"
-                        value={lowBalanceThreshold ? parseInt(lowBalanceThreshold).toLocaleString() : ""}
+                        value={(() => {
+                          if (!lowBalanceThreshold) return "";
+                          const parts = lowBalanceThreshold.toString().split('.');
+                          parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                          return parts.join('.');
+                        })()}
                         onChange={(e) => {
-                          const rawValue = e.target.value.replace(/,/g, '');
-                          if (!isNaN(Number(rawValue))) {
-                            setLowBalanceThreshold(rawValue);
+                          let value = e.target.value.replace(/[^0-9.]/g, '');
+                          const decimalParts = value.split('.');
+                          if (decimalParts.length > 2) {
+                            value = decimalParts[0] + '.' + decimalParts.slice(1).join('');
                           }
+                          setLowBalanceThreshold(value);
                         }}
-                        className="pl-8 pr-4 py-2 border border-slate-300 rounded-xl font-bold text-slate-900 w-32 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+                        placeholder="0.00"
+                        className="pl-8 pr-4 py-2 border border-slate-300 rounded-xl font-bold text-slate-900 w-44 focus:ring-2 focus:ring-purple-500 focus:outline-none font-mono text-sm"
                       />
                     </div>
                     <button 

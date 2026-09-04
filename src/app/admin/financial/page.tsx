@@ -5,7 +5,7 @@ import { Plus, Search, Filter, Lock, Printer, ArrowUpDown, ArrowUp } from "lucid
 import FinanceFormModal from "@/components/finance/FinanceFormModal";
 import { format, startOfMonth, endOfMonth, isWithinInterval, getISOWeek, getYear, isSameDay } from "date-fns";
 import { formatInPHTime } from "@/lib/utils";
-import { getFinancialRecords, deleteFinancialRecord } from "@/actions/finance";
+import { getFinancialRecords, deleteFinancialRecord, updateFinancialStatus } from "@/actions/finance";
 import { getSystemSetting } from "@/actions/settings";
 import { toast } from "sonner";
 
@@ -13,10 +13,15 @@ export default function FinancialModulePage() {
   const [records, setRecords] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewOnly, setIsViewOnly] = useState(false);
+  const [isPendingModalOpen, setIsPendingModalOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
+  const [clearanceTargetRecord, setClearanceTargetRecord] = useState<any>(null);
+  const [clearedDateInput, setClearedDateInput] = useState<string>(() => format(new Date(), "yyyy-MM-dd"));
+  const [isClearing, setIsClearing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all"); // "all", "Issuance", "Deposit"
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all"); // "all", "Pending", "Cleared", "Cancelled"
   const [hasDismissedWarning, setHasDismissedWarning] = useState(false);
   const [warningThreshold, setWarningThreshold] = useState(50000);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -56,7 +61,8 @@ export default function FinancialModulePage() {
     const matchesSearch = !searchTerm || 
       r.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.checkNo?.toLowerCase().includes(searchTerm.toLowerCase());
+      r.checkNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.status?.toLowerCase().includes(searchTerm.toLowerCase());
       
     if (!matchesSearch) return false;
     
@@ -65,6 +71,9 @@ export default function FinancialModulePage() {
 
     // 2.5 Category filter
     if (categoryFilter !== "all" && r.category !== categoryFilter) return false;
+
+    // 2.6 Status filter
+    if (statusFilter !== "all" && (r.status || "Pending") !== statusFilter) return false;
 
     // 3. Date filter
     if (dateFilterType === "all_years") return true;
@@ -113,9 +122,18 @@ export default function FinancialModulePage() {
       })
     : filteredRecords;
 
-  const totalIssuances = filteredRecords.filter(r => r.type === "Issuance").reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0);
-  const totalDeposits = filteredRecords.filter(r => r.type === "Deposit").reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0);
+  // Active records (non-cancelled) for calculations
+  const nonCancelledRecords = filteredRecords.filter(r => r.status !== "Cancelled");
+  
+  // Total Issuances & Deposits reflect ONLY Cleared records (pending checks do not deduct/add to balance until cleared)
+  const totalIssuances = nonCancelledRecords.filter(r => r.type === "Issuance" && r.status === "Cleared").reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0);
+  const totalDeposits = nonCancelledRecords.filter(r => r.type === "Deposit" && r.status === "Cleared").reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0);
   const netBalance = totalDeposits - totalIssuances;
+
+  // Pending floating totals
+  const pendingIssuances = nonCancelledRecords.filter(r => r.type === "Issuance" && (r.status === "Pending" || !r.status)).reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0);
+  const pendingDeposits = nonCancelledRecords.filter(r => r.type === "Deposit" && (r.status === "Pending" || !r.status)).reduce((acc, curr) => acc + parseFloat(curr.amount || 0), 0);
+  const projectedBalance = netBalance - pendingIssuances + pendingDeposits;
 
   // Reset the warning dismissal if the balance recovers above the threshold
   useEffect(() => {
@@ -123,6 +141,53 @@ export default function FinancialModulePage() {
       setHasDismissedWarning(false);
     }
   }, [netBalance, warningThreshold]);
+
+  const handleStatusToggle = async (record: any, newStatus: string) => {
+    if (newStatus === "Cleared") {
+      // Open clearance confirmation modal to choose/confirm clearance date
+      setClearanceTargetRecord(record);
+      setClearedDateInput(format(new Date(), "yyyy-MM-dd"));
+      return;
+    }
+
+    try {
+      // Optimistic update
+      setRecords(prev => prev.map(r => r.id === record.id ? { ...r, status: newStatus } : r));
+      const res = await updateFinancialStatus(record.id, newStatus);
+      if (res.success) {
+        toast.success(`Check #${record.checkNo || record.name} marked as ${newStatus}`);
+      } else {
+        toast.error("Failed to update status");
+        const data = await getFinancialRecords();
+        setRecords(data);
+      }
+    } catch (err) {
+      toast.error("An error occurred");
+      const data = await getFinancialRecords();
+      setRecords(data);
+    }
+  };
+
+  const handleConfirmClearance = async () => {
+    if (!clearanceTargetRecord) return;
+    setIsClearing(true);
+    try {
+      const res = await updateFinancialStatus(clearanceTargetRecord.id, "Cleared", clearedDateInput);
+      if (res.success) {
+        toast.success(`Check #${clearanceTargetRecord.checkNo || clearanceTargetRecord.name} cleared successfully!`);
+        const data = await getFinancialRecords();
+        setRecords(data);
+        setClearanceTargetRecord(null);
+      } else {
+        toast.error("Failed to clear check");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to clear check");
+    } finally {
+      setIsClearing(false);
+    }
+  };
 
   const handleDelete = async (id: string) => {
     if (confirm("Are you sure you want to delete this record? This cannot be undone.")) {
@@ -234,19 +299,48 @@ export default function FinancialModulePage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print:grid-cols-3 print:gap-2 print:mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 print:grid-cols-4 print:gap-2 print:mb-6">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-1 print:p-3 print:rounded-none">
-          <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Total Issuances</span>
+          <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Total Issuances (Cleared)</span>
           <span className="text-2xl font-black text-rose-600 font-mono print:text-lg">₱{totalIssuances.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+          <span className="text-[11px] text-slate-400 font-medium">Bank-cleared disbursements</span>
         </div>
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-1 print:p-3 print:rounded-none">
-          <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Total Deposits</span>
+          <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Total Deposits (Cleared)</span>
           <span className="text-2xl font-black text-emerald-600 font-mono print:text-lg">₱{totalDeposits.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+          <span className="text-[11px] text-slate-400 font-medium">Bank-cleared collections</span>
+        </div>
+        <div 
+          onClick={() => setIsPendingModalOpen(true)}
+          className="bg-amber-50/70 hover:bg-amber-100/70 p-5 rounded-2xl border border-amber-200/90 shadow-sm flex flex-col gap-1 print:p-3 print:rounded-none cursor-pointer transition-all hover:shadow-md hover:scale-[1.01] group relative"
+          title="Click to view details of all pending/uncleared cheques"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-amber-800 text-xs font-bold uppercase tracking-wider group-hover:text-amber-900 transition-colors flex items-center gap-1.5">
+              <span>⏳</span> Pending / Uncleared
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200/80 text-amber-950 group-hover:bg-amber-300 transition-colors">
+              Floating
+              <span className="material-symbols-outlined text-[12px]">visibility</span>
+            </span>
+          </div>
+          <span className="text-2xl font-black text-amber-800 font-mono print:text-lg">
+            ₱{pendingIssuances.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </span>
+          <span className="text-[11px] text-amber-700/90 font-semibold group-hover:underline flex items-center justify-between mt-0.5">
+            <span>{nonCancelledRecords.filter(r => r.type === "Issuance" && (r.status === "Pending" || !r.status)).length} checks pending encashment</span>
+            <span className="text-[10px] font-bold text-amber-800 uppercase">View &rarr;</span>
+          </span>
         </div>
         <div className={`p-5 rounded-2xl border shadow-sm flex flex-col gap-1 print:p-3 print:rounded-none ${netBalance >= 0 ? 'bg-blue-50/50 border-blue-200' : 'bg-rose-50/50 border-rose-200'}`}>
-          <span className={`text-xs font-bold uppercase tracking-wider ${netBalance >= 0 ? 'text-blue-700' : 'text-rose-700'}`}>Running Balance</span>
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-bold uppercase tracking-wider ${netBalance >= 0 ? 'text-blue-700' : 'text-rose-700'}`}>Running Balance</span>
+          </div>
           <span className={`text-2xl font-black font-mono print:text-lg ${netBalance >= 0 ? 'text-blue-700' : 'text-rose-700'}`}>
             {netBalance >= 0 ? "+" : ""}₱{netBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          </span>
+          <span className="text-[11px] font-semibold text-slate-500">
+            Projected after checks: <strong className="text-slate-800 font-mono">{projectedBalance >= 0 ? "+" : ""}₱{projectedBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
           </span>
         </div>
       </div>
@@ -254,27 +348,46 @@ export default function FinancialModulePage() {
       {/* Data Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col flex-1 print:border-none print:shadow-none print:rounded-none">
         <div className="p-4 border-b border-slate-100 flex flex-wrap items-center gap-4 print:hidden">
-          <div className="relative flex-1 min-w-[280px] max-w-md">
+          <div className="relative flex-1 min-w-[240px] max-w-sm">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search by Check #, Name, or Category..."
+              placeholder="Search check #, name, status..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
             />
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-slate-500 uppercase">Status:</span>
+              <div className="relative inline-block">
+                <span className="invisible block px-2 pr-14 py-2 text-sm font-medium whitespace-pre pointer-events-none">
+                  {statusFilter === 'all' ? 'All Status' : statusFilter}
+                </span>
+                <select 
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="absolute inset-0 w-full h-full bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all p-2 pr-8"
+                >
+                  <option value="all">All Status</option>
+                  <option value="Pending">Pending / Uncleared</option>
+                  <option value="Cleared">Cleared</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+            </div>
+
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-slate-500 uppercase">Type:</span>
               <div className="relative inline-block">
-                <span className="invisible block px-2 pr-16 py-2 text-sm font-medium whitespace-pre pointer-events-none">
+                <span className="invisible block px-2 pr-14 py-2 text-sm font-medium whitespace-pre pointer-events-none">
                   {typeFilter === 'all' ? 'All Types' : typeFilter === 'Issuance' ? 'Issuances' : 'Deposits'}
                 </span>
                 <select 
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
-                  className="absolute inset-0 w-full h-full bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all p-2 pr-10"
+                  className="absolute inset-0 w-full h-full bg-slate-50 border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all p-2 pr-8"
                 >
                   <option value="all">All Types</option>
                   <option value="Issuance">Issuances</option>
@@ -383,6 +496,7 @@ export default function FinancialModulePage() {
               <tr className="bg-slate-50/50 print:bg-blue-50 divide-x divide-slate-200" style={{ WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
                 <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 print:py-1 print:border-b-blue-200">Date</th>
                 <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 print:py-1 print:border-b-blue-200">Type</th>
+                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 print:py-1 print:border-b-blue-200">Status</th>
                 <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 print:py-1 print:border-b-blue-200">Category</th>
                 <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 print:py-1 print:border-b-blue-200">Bank</th>
                 <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 print:py-1 print:border-b-blue-200">Name / Supplier</th>
@@ -402,18 +516,20 @@ export default function FinancialModulePage() {
                 </th>
                 <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 print:py-1 print:border-b-blue-200">Amount</th>
                 <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 print:py-1 print:border-b-blue-200">Remarks</th>
-                <th className="px-4 py-3 text-right font-bold text-slate-700 uppercase tracking-wider print:hidden w-24">Actions</th>
+                <th className="px-4 py-3 text-right font-bold text-slate-700 uppercase tracking-wider print:hidden w-28">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-slate-500 text-sm">
+                  <td colSpan={10} className="px-4 py-12 text-center text-slate-500 text-sm">
                     No financial records found for this filter.
                   </td>
                 </tr>
               ) : (
-                displayedRecords.map((record) => (
+                displayedRecords.map((record) => {
+                  const recordStatus = record.status || "Pending";
+                  return (
                   <tr 
                     key={record.id} 
                     onClick={() => {
@@ -421,7 +537,9 @@ export default function FinancialModulePage() {
                       setIsViewOnly(true);
                       setIsModalOpen(true);
                     }}
-                    className="hover:bg-slate-50/50 transition-colors cursor-pointer print:break-inside-avoid print:cursor-auto group divide-x divide-slate-100 print:divide-slate-200"
+                    className={`hover:bg-slate-50/50 transition-colors cursor-pointer print:break-inside-avoid print:cursor-auto group divide-x divide-slate-100 print:divide-slate-200 ${
+                      recordStatus === 'Cancelled' ? 'opacity-50 bg-slate-50/60' : ''
+                    }`}
                   >
                     <td className="px-4 py-3 text-sm text-slate-600 print:py-1 group-hover:text-blue-600 transition-colors">{format(new Date(record.date), "MMM d, yyyy")}</td>
                     <td className="px-4 py-3 print:py-1">
@@ -431,11 +549,28 @@ export default function FinancialModulePage() {
                         {record.type}
                       </span>
                     </td>
+                    <td className="px-4 py-3 print:py-1">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                          recordStatus === "Cleared"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                            : recordStatus === "Cancelled"
+                            ? "bg-slate-100 text-slate-600 border-slate-300 line-through"
+                            : "bg-amber-50 text-amber-800 border-amber-300 animate-pulse print:animate-none"
+                        }`}
+                      >
+                        {recordStatus === "Pending" && "⏳ Pending"}
+                        {recordStatus === "Cleared" && "✓ Cleared"}
+                        {recordStatus === "Cancelled" && "✕ Cancelled"}
+                      </span>
+                    </td>
                     <td className="px-4 py-3 text-sm font-medium text-slate-700 print:py-1">{record.category}</td>
                     <td className="px-4 py-3 text-sm font-medium text-slate-600 print:py-1">{record.bank || "-"}</td>
                     <td className="px-4 py-3 text-sm text-slate-900 font-bold print:py-1">{record.name}</td>
                     <td className="px-4 py-3 text-sm text-slate-500 font-mono print:py-1">{record.checkNo || "-"}</td>
-                    <td className="px-4 py-3 text-sm font-black font-mono text-right text-slate-900 print:py-1">
+                    <td className={`px-4 py-3 text-sm font-black font-mono text-right print:py-1 ${
+                      recordStatus === 'Cancelled' ? 'line-through text-slate-400' : 'text-slate-900'
+                    }`}>
                       ₱{parseFloat(record.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </td>
                     <td className="px-4 py-3 text-sm text-slate-600 print:py-1 max-w-[150px] truncate" title={record.remarks}>{record.remarks || "-"}</td>
@@ -466,17 +601,270 @@ export default function FinancialModulePage() {
                       </div>
                     </td>
                   </tr>
-                ))
+                );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
 
+      {/* Pending / Uncleared Checks Detailed Modal */}
+      {isPendingModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-amber-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700 font-bold text-lg shadow-sm">
+                  ⏳
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                    Pending / Uncleared Cheques
+                  </h2>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Issued checks awaiting encashment or bank processing
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsPendingModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white transition-colors"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            {/* Modal Subheader Summary */}
+            {nonCancelledRecords.filter(r => (r.status === "Pending" || !r.status)).length > 0 && (
+              <div className="bg-amber-500/10 px-6 py-3 border-b border-amber-200/60 flex items-center justify-between flex-wrap gap-2">
+                <span className="text-xs font-bold text-amber-900">
+                  Total Floating Records ({nonCancelledRecords.filter(r => (r.status === "Pending" || !r.status)).length})
+                </span>
+                <span className="text-base font-black font-mono text-amber-900">
+                  ₱{pendingIssuances.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            )}
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+              {(() => {
+                const pendingChecks = nonCancelledRecords.filter(r => (r.status === "Pending" || !r.status));
+                if (pendingChecks.length === 0) {
+                  return (
+                    <div className="py-16 text-center flex flex-col items-center justify-center">
+                      <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center mb-3">
+                        <span className="material-symbols-outlined text-3xl text-emerald-600">check_circle</span>
+                      </div>
+                      <h3 className="text-base font-bold text-slate-800 mb-1">No Pending or Uncleared Cheques</h3>
+                      <p className="text-sm text-slate-500 max-w-sm">
+                        All issued checks and financial transactions have been cleared by the bank.
+                      </p>
+                      <button
+                        onClick={() => setIsPendingModalOpen(false)}
+                        className="mt-6 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors"
+                      >
+                        Close
+                      </button>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="space-y-3">
+                    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-slate-200">
+                            <th className="px-3.5 py-2.5 font-bold text-slate-600 uppercase">Date</th>
+                            <th className="px-3.5 py-2.5 font-bold text-slate-600 uppercase">Type</th>
+                            <th className="px-3.5 py-2.5 font-bold text-slate-600 uppercase">Check #</th>
+                            <th className="px-3.5 py-2.5 font-bold text-slate-600 uppercase">Bank</th>
+                            <th className="px-3.5 py-2.5 font-bold text-slate-600 uppercase">Payee / Supplier</th>
+                            <th className="px-3.5 py-2.5 font-bold text-slate-600 uppercase">Category</th>
+                            <th className="px-3.5 py-2.5 font-bold text-slate-600 uppercase text-right">Amount</th>
+                            <th className="px-3.5 py-2.5 font-bold text-slate-600 uppercase text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {pendingChecks.map((item) => (
+                            <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                              <td className="px-3.5 py-2.5 text-slate-600 font-medium">
+                                {format(new Date(item.date), "MMM d, yyyy")}
+                              </td>
+                              <td className="px-3.5 py-2.5">
+                                <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  item.type === "Issuance" ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"
+                                }`}>
+                                  {item.type}
+                                </span>
+                              </td>
+                              <td className="px-3.5 py-2.5 font-mono font-bold text-slate-900">
+                                {item.checkNo || "N/A"}
+                              </td>
+                              <td className="px-3.5 py-2.5 text-slate-600 font-medium">
+                                {item.bank || "-"}
+                              </td>
+                              <td className="px-3.5 py-2.5 text-slate-900 font-bold">
+                                {item.name}
+                              </td>
+                              <td className="px-3.5 py-2.5 text-slate-600">
+                                <span className="inline-block px-2 py-0.5 rounded bg-slate-100 text-[11px] font-medium text-slate-700">
+                                  {item.category}
+                                </span>
+                              </td>
+                              <td className="px-3.5 py-2.5 font-mono font-black text-slate-900 text-right">
+                                ₱{parseFloat(item.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                              </td>
+                              <td className="px-3.5 py-2.5 text-right">
+                                <button
+                                  type="button"
+                                  onClick={async (e) => {
+                                    e.stopPropagation();
+                                    await handleStatusToggle(item, "Cleared");
+                                  }}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors"
+                                  title="Mark this check as Cleared"
+                                >
+                                  <span>✓</span> Mark Cleared
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-200 bg-white flex justify-end gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsPendingModalOpen(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clearance Confirmation Modal with Date Picker */}
+      {clearanceTargetRecord && (
+        <div className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="bg-emerald-600 p-5 text-white flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-lg">
+                  ✓
+                </div>
+                <div>
+                  <h3 className="text-base font-black">Confirm Check Clearance</h3>
+                  <p className="text-xs text-emerald-100 font-medium">Bank Processing Verification</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setClearanceTargetRecord(null)}
+                disabled={isClearing}
+                className="p-1 rounded-lg text-emerald-100 hover:text-white hover:bg-emerald-700 transition-colors"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4">
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-bold uppercase">Check #</span>
+                  <span className="font-mono font-bold text-slate-900">{clearanceTargetRecord.checkNo || "N/A"}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-bold uppercase">Payee / Name</span>
+                  <span className="font-bold text-slate-900">{clearanceTargetRecord.name}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-slate-500 font-bold uppercase">Bank</span>
+                  <span className="font-medium text-slate-700">{clearanceTargetRecord.bank || "-"}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs border-t border-slate-200 pt-2">
+                  <span className="text-slate-700 font-bold uppercase">Amount</span>
+                  <span className="font-mono font-black text-emerald-700 text-sm">
+                    ₱{parseFloat(clearanceTargetRecord.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+
+              {/* Date Selection */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1.5">
+                  Clearance Date <span className="text-red-500">*</span>
+                </label>
+                <input 
+                  type="date"
+                  value={clearedDateInput}
+                  onChange={(e) => setClearedDateInput(e.target.value)}
+                  onClick={(e) => {
+                    try {
+                      if ('showPicker' in e.target) {
+                        (e.target as any).showPicker();
+                      }
+                    } catch (err) {}
+                  }}
+                  className="w-full bg-slate-50 border border-slate-300 text-slate-900 text-sm font-medium rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 block p-3 shadow-xs"
+                  required
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Select the date this check was cleared/encashed by the bank.
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setClearanceTargetRecord(null)}
+                disabled={isClearing}
+                className="px-4 py-2.5 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold rounded-xl text-xs transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmClearance}
+                disabled={isClearing || !clearedDateInput}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs shadow-md shadow-emerald-600/20 transition-all flex items-center gap-1.5"
+              >
+                {isClearing ? (
+                  <>
+                    <span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
+                    Clearing...
+                  </>
+                ) : (
+                  <>
+                    <span>✓</span> Confirm Cleared
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {isModalOpen && (
         <FinanceFormModal 
           initialRecord={selectedRecord}
           isViewOnly={isViewOnly}
+          runningBalance={netBalance}
+          warningThreshold={warningThreshold}
           onClose={() => setIsModalOpen(false)}
           onSave={async () => {
              const data = await getFinancialRecords();

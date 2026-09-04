@@ -163,7 +163,7 @@ export const financialRecords = pgTable("financial_records", {
   name: varchar("name", { length: 255 }).notNull(),
   type: varchar("type", { length: 50 }).notNull(), // "Issuance" or "Deposit"
   category: varchar("category", { length: 255 }).notNull(),
-  status: varchar("status", { length: 50 }).notNull().default("Pending"), // "Pending", "Cleared", "Cancelled"
+  status: varchar("status", { length: 50 }).notNull().default("Cleared"), // "Cleared", "Pending", "Cancelled"
   remarks: text("remarks"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
