@@ -12,3 +12,4 @@ export default async function FinancialLayout({ children }: { children: React.Re
 
   return <>{children}</>;
 }
+// araykopo pakak
