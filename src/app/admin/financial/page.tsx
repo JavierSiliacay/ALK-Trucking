@@ -339,8 +339,8 @@ export default function FinancialModulePage() {
           <span className={`text-2xl font-black font-mono print:text-lg ${netBalance >= 0 ? 'text-blue-700' : 'text-rose-700'}`}>
             {netBalance >= 0 ? "+" : ""}₱{netBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
           </span>
-          <span className="text-[11px] font-semibold text-slate-500">
-            Projected after checks: <strong className="text-slate-800 font-mono">{projectedBalance >= 0 ? "+" : ""}₱{projectedBalance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong>
+          <span className="text-[11px] text-slate-400 font-medium">
+            Net cleared bank position
           </span>
         </div>
       </div>
@@ -611,12 +611,12 @@ export default function FinancialModulePage() {
 
       {/* Pending / Uncleared Checks Detailed Modal */}
       {isPendingModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-6xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-amber-50/50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700 font-bold text-lg shadow-sm">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-amber-50/60">
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-amber-100/80 border border-amber-200/60 flex items-center justify-center text-amber-700 font-bold text-lg shadow-xs">
                   ⏳
                 </div>
                 <div>
@@ -630,7 +630,8 @@ export default function FinancialModulePage() {
               </div>
               <button 
                 onClick={() => setIsPendingModalOpen(false)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white transition-colors"
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-white transition-colors"
+                title="Close modal"
               >
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
@@ -638,11 +639,16 @@ export default function FinancialModulePage() {
 
             {/* Modal Subheader Summary */}
             {nonCancelledRecords.filter(r => (r.status === "Pending" || !r.status)).length > 0 && (
-              <div className="bg-amber-500/10 px-6 py-3 border-b border-amber-200/60 flex items-center justify-between flex-wrap gap-2">
-                <span className="text-xs font-bold text-amber-900">
-                  Total Floating Records ({nonCancelledRecords.filter(r => (r.status === "Pending" || !r.status)).length})
-                </span>
-                <span className="text-base font-black font-mono text-amber-900">
+              <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent px-6 py-3 border-b border-amber-200/50 flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                    {nonCancelledRecords.filter(r => (r.status === "Pending" || !r.status)).length} Pending
+                  </span>
+                  <span className="text-xs font-semibold text-slate-600">
+                    Total Floating Amount Awaiting Clearance
+                  </span>
+                </div>
+                <span className="text-lg font-black font-mono text-amber-900">
                   ₱{pendingIssuances.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </span>
               </div>
@@ -664,7 +670,7 @@ export default function FinancialModulePage() {
                       </p>
                       <button
                         onClick={() => setIsPendingModalOpen(false)}
-                        className="mt-6 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors"
+                        className="mt-6 px-5 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition-colors shadow-sm"
                       >
                         Close
                       </button>
@@ -674,61 +680,63 @@ export default function FinancialModulePage() {
 
                 return (
                   <div className="space-y-3">
-                    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+                    <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-xs">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
-                          <tr className="bg-slate-50 border-b border-slate-200">
-                            <th className="px-3.5 py-2.5 font-bold text-slate-600 uppercase">Date</th>
-                            <th className="px-3.5 py-2.5 font-bold text-slate-600 uppercase">Type</th>
-                            <th className="px-3.5 py-2.5 font-bold text-slate-600 uppercase">Check #</th>
-                            <th className="px-3.5 py-2.5 font-bold text-slate-600 uppercase">Bank</th>
-                            <th className="px-3.5 py-2.5 font-bold text-slate-600 uppercase">Payee / Supplier</th>
-                            <th className="px-3.5 py-2.5 font-bold text-slate-600 uppercase">Category</th>
-                            <th className="px-3.5 py-2.5 font-bold text-slate-600 uppercase text-right">Amount</th>
-                            <th className="px-3.5 py-2.5 font-bold text-slate-600 uppercase text-right">Action</th>
+                          <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[11px] font-bold">
+                            <th className="px-4 py-3 whitespace-nowrap">Date</th>
+                            <th className="px-4 py-3 whitespace-nowrap">Type</th>
+                            <th className="px-4 py-3 whitespace-nowrap">Check #</th>
+                            <th className="px-4 py-3 whitespace-nowrap">Bank</th>
+                            <th className="px-4 py-3 whitespace-nowrap">Payee / Supplier</th>
+                            <th className="px-4 py-3 whitespace-nowrap">Category</th>
+                            <th className="px-4 py-3 whitespace-nowrap text-right">Amount</th>
+                            <th className="px-4 py-3 whitespace-nowrap text-right">Action</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                           {pendingChecks.map((item) => (
-                            <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-                              <td className="px-3.5 py-2.5 text-slate-600 font-medium">
+                            <tr key={item.id} className="hover:bg-amber-50/30 transition-colors">
+                              <td className="px-4 py-3 text-slate-600 font-medium whitespace-nowrap">
                                 {format(new Date(item.date), "MMM d, yyyy")}
                               </td>
-                              <td className="px-3.5 py-2.5">
-                                <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                  item.type === "Issuance" ? "bg-rose-100 text-rose-700" : "bg-emerald-100 text-emerald-700"
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                                  item.type === "Issuance" ? "bg-rose-100 text-rose-700 border border-rose-200/60" : "bg-emerald-100 text-emerald-700 border border-emerald-200/60"
                                 }`}>
                                   {item.type}
                                 </span>
                               </td>
-                              <td className="px-3.5 py-2.5 font-mono font-bold text-slate-900">
-                                {item.checkNo || "N/A"}
+                              <td className="px-4 py-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                                <span className="bg-slate-100 px-2 py-0.5 rounded border border-slate-200/60">
+                                  {item.checkNo || "N/A"}
+                                </span>
                               </td>
-                              <td className="px-3.5 py-2.5 text-slate-600 font-medium">
+                              <td className="px-4 py-3 text-slate-700 font-semibold whitespace-nowrap">
                                 {item.bank || "-"}
                               </td>
-                              <td className="px-3.5 py-2.5 text-slate-900 font-bold">
+                              <td className="px-4 py-3 text-slate-900 font-bold max-w-xs truncate">
                                 {item.name}
                               </td>
-                              <td className="px-3.5 py-2.5 text-slate-600">
-                                <span className="inline-block px-2 py-0.5 rounded bg-slate-100 text-[11px] font-medium text-slate-700">
+                              <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                                <span className="inline-block px-2.5 py-0.5 rounded-md bg-slate-100 text-[11px] font-medium text-slate-700 border border-slate-200/60">
                                   {item.category}
                                 </span>
                               </td>
-                              <td className="px-3.5 py-2.5 font-mono font-black text-slate-900 text-right">
+                              <td className="px-4 py-3 font-mono font-black text-slate-900 text-right whitespace-nowrap">
                                 ₱{parseFloat(item.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                               </td>
-                              <td className="px-3.5 py-2.5 text-right">
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
                                 <button
                                   type="button"
                                   onClick={async (e) => {
                                     e.stopPropagation();
                                     await handleStatusToggle(item, "Cleared");
                                   }}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white shadow-xs transition-all"
                                   title="Mark this check as Cleared"
                                 >
-                                  <span>✓</span> Mark Cleared
+                                  <span className="text-sm">✓</span> Mark Cleared
                                 </button>
                               </td>
                             </tr>
@@ -746,7 +754,7 @@ export default function FinancialModulePage() {
               <button
                 type="button"
                 onClick={() => setIsPendingModalOpen(false)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors"
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors"
               >
                 Close
               </button>
